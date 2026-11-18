@@ -1,7 +1,6 @@
 import { Metadata } from "next"
 
 import FeaturedProducts from "@modules/home/components/featured-products"
-import Hero from "@modules/home/components/hero"
 import { listCollections } from "@lib/data/collections"
 import { getRegion } from "@lib/data/regions"
 import { toJsonLd } from "@lib/util/product-structured-data"
@@ -83,7 +82,6 @@ export default async function Home(props: {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(structuredData) }}
       />
-      <Hero />
       <FeaturedProducts collections={collections} region={region} />
     </>
   )

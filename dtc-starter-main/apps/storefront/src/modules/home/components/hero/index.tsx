@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, Sparkles } from "@medusajs/icons"
 import AiChatTrigger from "@modules/ai-chat/components/ai-chat-trigger"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Image from "next/image"
 import { useEffect, useState } from "react"
 
 const slides = [
@@ -37,10 +38,18 @@ const slides = [
   },
 ]
 
-const Hero = () => {
+type HeroProduct = {
+  handle: string
+  title: string
+  image: string
+  price?: string
+}
+
+const Hero = ({ products }: { products: HeroProduct[] }) => {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const slide = slides[activeIndex]
+  const product = products.length ? products[activeIndex % products.length] : undefined
 
   useEffect(() => {
     if (
@@ -67,7 +76,7 @@ const Hero = () => {
 
   return (
     <section
-      className="relative h-[520px] overflow-hidden text-white small:h-[440px]"
+      className="relative h-[540px] overflow-hidden text-white small:h-[460px]"
       style={{ background: slide.background }}
       aria-roledescription="轮播图"
       aria-label="知选商城精选活动"
@@ -85,7 +94,7 @@ const Hero = () => {
         <div className="absolute bottom-10 left-[45%] h-24 w-24 rotate-12 rounded-3xl bg-white/10" />
       </div>
 
-      <div className="content-container relative flex h-full items-center pb-24 pt-4">
+      <div className="content-container relative flex h-full flex-col justify-center gap-4 pb-28 pt-4 small:flex-row small:items-center small:justify-between small:gap-8 small:pb-32">
         <div
           key={activeIndex}
           className="relative z-10 max-w-2xl animate-slide-up"
@@ -94,7 +103,7 @@ const Hero = () => {
             <span className="h-px w-8 bg-brand-orange" />
             {slide.eyebrow}
           </p>
-          <h1 className="whitespace-pre-line text-4xl font-bold leading-[1.15] tracking-tight small:text-5xl small:leading-[1.12]">
+          <h1 className="whitespace-pre-line text-3xl font-bold leading-[1.15] tracking-tight small:text-4xl xl:text-5xl">
             {slide.title}
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-7 text-white/80 small:text-base">
@@ -122,45 +131,33 @@ const Hero = () => {
           </div>
         </div>
 
-        <div
-          className="absolute right-10 top-16 hidden w-[360px] xl:block"
-          aria-hidden="true"
-        >
-          <div className="rotate-3 rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-md">
-            <div className="flex items-center justify-between border-b border-white/20 pb-4 text-xs tracking-[0.2em] text-white/70">
-              <span>ZHIXUAN EDIT</span>
-              <span>0{activeIndex + 1} / 03</span>
+        {product && (
+          <LocalizedClientLink
+            href={`/products/${product.handle}`}
+            className="group z-10 flex w-full min-w-0 items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-2 hover:bg-white/20 small:w-[220px] small:shrink-0 small:flex-col small:items-stretch small:p-3 xl:w-[300px]"
+          >
+            <div className="relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-lg bg-[#F7F8F8] small:aspect-[4/3] small:w-full">
+              <Image src={product.image} alt="" fill sizes="(max-width: 1023px) 72px, 280px" className="scale-125 object-contain transition-transform motion-safe:group-hover:scale-[1.32]" />
             </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="aspect-square rounded-xl bg-white/90 p-4">
-                <div className="h-full rounded-lg bg-gradient-to-br from-gray-100 to-gray-300" />
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="h-3 w-3/4 rounded-full bg-white/50" />
-                <div className="h-3 w-1/2 rounded-full bg-white/30" />
-                <div className="mt-auto h-10 rounded-full bg-brand-yellow" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center gap-3 rounded-xl bg-brand-navy/60 p-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-orange text-brand-navy">
-                <Sparkles className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold">AI 选品匹配</p>
-                <p className="mt-1 text-xs text-white/60">
-                  理解需求，而不只是匹配关键词
-                </p>
+            <div className="min-w-0 small:px-1">
+              <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-brand-orange">
+                <Sparkles className="h-4 w-4 shrink-0" />
+                AI 智能匹配推荐
+              </p>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <p className="line-clamp-1 text-sm font-semibold">{product.title}</p>
+                {product.price && <span className="rounded bg-brand-yellow px-1.5 text-sm font-bold text-brand-ink">{product.price}</span>}
               </div>
             </div>
-          </div>
-        </div>
+          </LocalizedClientLink>
+        )}
       </div>
 
       <button
         type="button"
         onClick={showPrevious}
         aria-label="上一张活动横幅"
-        className="absolute left-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/20 p-2 text-white backdrop-blur-sm hover:bg-black/40 small:block"
+        className="absolute bottom-[100px] left-[calc(50%-76px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
@@ -168,12 +165,12 @@ const Hero = () => {
         type="button"
         onClick={showNext}
         aria-label="下一张活动横幅"
-        className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/20 p-2 text-white backdrop-blur-sm hover:bg-black/40 small:block"
+        className="absolute bottom-[100px] right-[calc(50%-76px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
       >
         <ChevronRight className="h-6 w-6" />
       </button>
 
-      <div className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 small:bottom-20">
+      <div className="absolute bottom-24 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 small:bottom-28">
         {slides.map((item, index) => (
           <button
             key={item.eyebrow}

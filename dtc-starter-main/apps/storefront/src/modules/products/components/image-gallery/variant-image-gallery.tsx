@@ -18,8 +18,9 @@ const getImagesForVariant = (
     return product.images
   }
 
-  const imageIdsMap = new Map(variant.images!.map((i) => [i.id, true]))
-  return product.images?.filter((i) => imageIdsMap.has(i.id)) ?? null
+  const imageIds = new Set(variant.images.map((image) => image.id))
+  const images = product.images?.filter((image) => imageIds.has(image.id))
+  return images?.length ? images : product.images
 }
 
 /**
@@ -38,7 +39,7 @@ const VariantImageGallery = ({
     [product, variantId]
   )
 
-  return <ImageGallery images={images} />
+  return <ImageGallery key={variantId} images={images} thumbnail={product.thumbnail} title={product.title} />
 }
 
 export default VariantImageGallery

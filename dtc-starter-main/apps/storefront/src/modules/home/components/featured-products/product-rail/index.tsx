@@ -10,6 +10,8 @@ type ProductRailProps = {
   products: HttpTypes.StoreProduct[]
   region: HttpTypes.StoreRegion
   href: string
+  isFeatured?: boolean
+  horizontal?: boolean
 }
 
 export default function ProductRail({
@@ -19,6 +21,8 @@ export default function ProductRail({
   products,
   region,
   href,
+  isFeatured,
+  horizontal,
 }: ProductRailProps) {
   if (!products.length) {
     return null
@@ -55,13 +59,13 @@ export default function ProductRail({
           </LocalizedClientLink>
         </div>
 
-        <ul className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto p-4 small:grid small:grid-cols-3 small:overflow-visible small:p-6 medium:grid-cols-4">
+        <ul className={`flex snap-x snap-mandatory gap-4 overflow-x-auto p-4 small:p-6 ${horizontal ? "" : "no-scrollbar small:grid small:grid-cols-3 small:overflow-visible medium:grid-cols-4"}`}>
           {products.map((product) => (
             <li
               key={product.id}
-              className="w-[76vw] max-w-[310px] shrink-0 snap-start xsmall:w-[42vw] small:w-auto small:max-w-none"
+              className={`w-[64vw] max-w-[260px] shrink-0 snap-start xsmall:w-[42vw] ${horizontal ? "small:w-[220px]" : "small:w-auto small:max-w-none"}`}
             >
-              <ProductPreview product={product} region={region} />
+              <ProductPreview product={product} region={region} isFeatured={isFeatured} />
             </li>
           ))}
         </ul>

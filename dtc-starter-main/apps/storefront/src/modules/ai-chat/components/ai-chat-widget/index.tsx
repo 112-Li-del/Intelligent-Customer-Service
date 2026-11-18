@@ -51,7 +51,7 @@ const getMockReply = (query: string, product?: AiChatProduct) => {
 
   if (query.includes("尺码") || query.includes("尺寸")) {
     return product
-      ? `针对「${product.name}」，建议先确认你平时穿着的尺码、偏好的宽松程度，以及详情页提供的规格参数。你也可以告诉我身高、体重和穿着习惯，我会帮你做更具体的判断。`
+      ? `你正在查看「${product.name}」${product.size ? `，已选 ${product.size} 码` : ""}。告诉我你的身高、体重和偏好的宽松程度，我可以根据商品规格帮你判断怎么选。`
       : "选尺码时建议结合身高、体重、平时常穿尺码和偏好的宽松程度判断。把这些信息告诉我，我可以帮你缩小选择范围。"
   }
 
@@ -114,48 +114,50 @@ const AiChatWidget = () => {
     AiChatProduct | undefined
   >()
   const nextMessageId = useRef(1)
+  const requestQueue = useRef(Promise.resolve())
+  const pendingRequests = useRef(0)
   const messageListRef = useRef<HTMLDivElement>(null)
   const isProductPage = pathname.includes("/products/")
 
   const sendQuery = useCallback(
-    async (rawQuery: string, product?: AiChatProduct) => {
+    (rawQuery: string, product?: AiChatProduct) => {
       const query = rawQuery.trim()
-      if (!query || isLoading) {
-        return
-      }
+      if (!query) return
 
-      if (product) {
-        setProductContext(product)
-      }
-
-      const userMessage: ChatMessage = {
-        id: nextMessageId.current++,
-        role: "user",
-        content: query,
-      }
-
-      setMessages((current) => [...current, userMessage])
+      pendingRequests.current++
       setInput("")
       setIsLoading(true)
 
-      try {
-        const reply = await requestAssistantReply(
-          query,
-          product ?? productContext
-        )
-        setMessages((current) => [
-          ...current,
-          {
+      requestQueue.current = requestQueue.current.then(async () => {
+        const userMessage: ChatMessage = {
+          id: nextMessageId.current++,
+          role: "user",
+          content: query,
+        }
+        setMessages((current) => [...current, userMessage])
+
+        try {
+          const reply = await requestAssistantReply(query, product)
+          const assistantMessage: ChatMessage = {
             id: nextMessageId.current++,
             role: "assistant",
             content: reply,
-          },
-        ])
-      } finally {
-        setIsLoading(false)
-      }
+          }
+          setMessages((current) => [...current, assistantMessage])
+        } catch {
+          const message: ChatMessage = {
+            id: nextMessageId.current++,
+            role: "assistant",
+            content: "暂时无法回复，请稍后再试。",
+          }
+          setMessages((current) => [...current, message])
+        } finally {
+          pendingRequests.current--
+          if (!pendingRequests.current) setIsLoading(false)
+        }
+      })
     },
-    [isLoading, productContext]
+    []
   )
 
   useEffect(() => {
@@ -283,11 +285,17 @@ const AiChatWidget = () => {
               )}
               <div className="min-w-0">
                 <p className="text-[11px] font-medium text-gray-500">
-                  正在咨询商品
+                  正在咨询
                 </p>
                 <p className="truncate text-sm font-semibold text-brand-ink">
                   {productContext.name}
                 </p>
+                {(productContext.size || productContext.price) && (
+                  <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-gray-600">
+                    {productContext.size && <span>尺码 {productContext.size}</span>}
+                    {productContext.price && <span>{productContext.price}</span>}
+                  </p>
+                )}
               </div>
             </div>
           )}

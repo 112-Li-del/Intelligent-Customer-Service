@@ -45,13 +45,18 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
   const maxQuantity = item.variant?.manage_inventory ? 10 : maxQtyFromInventory
 
   return (
-    <Table.Row className="w-full" data-testid="product-row">
-      <Table.Cell className="!pl-0 p-4 w-24">
+    <Table.Row
+      className={clx("w-full", {
+        "grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-4 small:table-row small:py-0": type === "full",
+      })}
+      data-testid="product-row"
+    >
+      <Table.Cell className="row-span-2 w-auto !pl-0 !pr-0 !py-0 small:w-24 small:!pr-4 small:!py-4">
         <LocalizedClientLink
           href={`/products/${item.product_handle}`}
           className={clx("flex", {
             "w-16": type === "preview",
-            "small:w-24 w-12": type === "full",
+            "w-16 small:w-20": type === "full",
           })}
         >
           <Thumbnail
@@ -62,7 +67,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         </LocalizedClientLink>
       </Table.Cell>
 
-      <Table.Cell className="text-left">
+      <Table.Cell className="col-span-2 min-w-0 !p-0 text-left small:!p-4">
         <Text
           className="txt-medium-plus text-ui-fg-base"
           data-testid="product-title"
@@ -73,8 +78,8 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
       </Table.Cell>
 
       {type === "full" && (
-        <Table.Cell>
-          <div className="flex gap-2 items-center w-28">
+        <Table.Cell className="col-start-2 !p-0 small:!p-4">
+          <div className="flex w-fit items-center gap-2">
             <DeleteButton id={item.id} data-testid="product-delete-button" />
             <CartItemSelect
               value={item.quantity}
@@ -94,9 +99,6 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
                 )
               )}
 
-              <option value={1} key={1}>
-                1
-              </option>
             </CartItemSelect>
             {updating && <Spinner />}
           </div>
@@ -114,7 +116,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         </Table.Cell>
       )}
 
-      <Table.Cell className="!pr-0">
+      <Table.Cell className="!p-0 text-right small:!py-4">
         <span
           className={clx("!pr-0", {
             "flex flex-col items-end h-full justify-center": type === "preview",

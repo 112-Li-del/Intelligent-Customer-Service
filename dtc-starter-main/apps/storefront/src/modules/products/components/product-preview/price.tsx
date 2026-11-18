@@ -21,13 +21,13 @@ export default function PreviewPrice({ price }: { price: VariantPrice }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
       <span
-        className="flex items-start font-medium text-brand-ink"
+        className="flex items-start font-bold text-[#B12704]"
         data-testid="price"
         data-value={price.calculated_price_number}
         aria-label={price.calculated_price}
       >
         {currency && <span className="mr-0.5 mt-0.5 text-xs">{currency}</span>}
-        <span className="text-2xl leading-7">{integer}</span>
+        <span className="text-lg leading-6">{integer}</span>
         {(decimal || fraction) && (
           <span className="mt-0.5 text-xs">
             {decimal}

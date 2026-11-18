@@ -42,7 +42,8 @@ export function getProductPrice({
   product,
   variantId,
 }: {
-  product: HttpTypes.StoreProduct
+  product: Pick<HttpTypes.StoreProduct, "id"> &
+    Partial<Pick<HttpTypes.StoreProduct, "variants">>
   variantId?: string
 }) {
   if (!product || !product.id) {

@@ -4,6 +4,7 @@ import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { openAiChat } from "@lib/util/ai-chat-events"
 import { notifyCartUpdated } from "@lib/util/cart-events"
+import { getProductPrice } from "@lib/util/get-product-price"
 import { isVariantInStock } from "@lib/util/inventory"
 import { HttpTypes } from "@medusajs/types"
 import {
@@ -107,8 +108,8 @@ export default function ProductActions({
       params.delete("v_id")
     }
 
-    router.replace(pathname + "?" + params.toString(), { scroll: false })
-  }, [selectedVariant, isValidVariant, isUrlVariantApplied, pathname, router])
+    window.history.replaceState(null, "", pathname + "?" + params.toString() + window.location.hash)
+  }, [selectedVariant, isValidVariant, isUrlVariantApplied, pathname])
 
   const inStock = useMemo(
     () => isVariantInStock(selectedVariant),
@@ -174,12 +175,24 @@ export default function ProductActions({
   }
 
   const askAiAboutProduct = () => {
+    const sizeOption = product.options?.find(({ title }) => /^(尺码|尺寸|size)$/i.test(title.trim()))
+    const size = sizeOption ? options[sizeOption.id] : undefined
+    const { cheapestPrice, variantPrice } = getProductPrice({
+      product,
+      variantId: selectedVariant?.id,
+    })
+    const price = selectedVariant
+      ? variantPrice?.calculated_price
+      : cheapestPrice ? `${cheapestPrice.calculated_price} 起` : undefined
+
     openAiChat({
-      query: `我想了解「${product.title}」的尺码、参数和选购建议。`,
+      query: `我在看「${product.title}」${size ? `，已选尺码 ${size}` : ""}${price ? `，页面价格 ${price}` : ""}。这款适合我吗？请帮我判断尺码和使用场景。`,
       product: {
         name: product.title,
         handle: product.handle,
         thumbnail: product.thumbnail,
+        size,
+        price,
       },
     })
   }

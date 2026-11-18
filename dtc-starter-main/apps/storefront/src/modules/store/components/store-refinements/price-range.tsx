@@ -71,12 +71,12 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
           data-testid="price-range"
         >
           <Slider.Track className="relative h-0.5 w-full grow rounded-full bg-ui-border-base">
-            <Slider.Range className="absolute h-full rounded-full bg-ui-fg-interactive" />
+            <Slider.Range className="absolute h-full rounded-full bg-brand-navy" />
           </Slider.Track>
           {value.map((_, index) => (
             <Slider.Thumb
               key={index}
-              className="block h-4 w-4 rounded-full border border-ui-border-interactive bg-ui-bg-base shadow-elevation-card-rest outline-none focus-visible:ring-2 focus-visible:ring-ui-fg-interactive"
+              className="block h-4 w-4 rounded-full border border-brand-navy bg-brand-orange shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
               aria-label={index === 0 ? "最低价" : "最高价"}
             />
           ))}

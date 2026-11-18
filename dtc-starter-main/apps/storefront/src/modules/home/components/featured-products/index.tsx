@@ -1,7 +1,9 @@
 import { listProducts } from "@lib/data/products"
+import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import DiscoveryCards from "@modules/home/components/discovery-cards"
 import ProductRail from "@modules/home/components/featured-products/product-rail"
+import Hero from "@modules/home/components/hero"
 
 export default async function FeaturedProducts({
   collections,
@@ -23,18 +25,49 @@ export default async function FeaturedProducts({
 
   const featuredProducts = featuredResult.response.products
   const newestProducts = newestResult.response.products
+  const taggedBestsellers = featuredProducts.filter((product) =>
+    product.tags?.some(({ value }) => /^(bestseller|热销)$/i.test(value))
+  )
+  const demoBestsellers = taggedBestsellers.length === 0
+  const bestsellerProducts = demoBestsellers
+    ? ["sweatshirt", "sweatpants", "t-shirt", "shorts"]
+        .flatMap((handle) => featuredProducts.filter((product) => product.handle === handle))
+    : taggedBestsellers
+  const heroProducts = Array.from(new Map(
+    [...bestsellerProducts, ...featuredProducts].map((product) => [product.id, product])
+  ).values()).flatMap((product) => {
+    const image = product.thumbnail || product.images?.[0]?.url
+    return image ? [{
+      handle: product.handle,
+      title: product.title,
+      image,
+      price: getProductPrice({ product }).cheapestPrice?.calculated_price,
+    }] : []
+  }).slice(0, 3)
 
   return (
     <>
-      <DiscoveryCards products={featuredProducts} collections={collections} />
+      <Hero products={heroProducts} />
+      <DiscoveryCards products={featuredProducts} newestProducts={newestProducts} collections={collections} />
       <div className="mt-8 space-y-8 pb-2">
         <ProductRail
           id="popular-products"
-          title="好物优选 · 为你精选"
-          description="从商城真实商品中精选，价格与规格一目了然"
+          title="本周热销榜单"
+          description={demoBestsellers ? "演示榜单 · 展示店内人气款式" : "商城热销商品精选"}
+          products={bestsellerProducts.length ? bestsellerProducts : featuredProducts.slice(0, 4)}
+          region={region}
+          href="/store"
+          isFeatured
+          horizontal
+        />
+        <ProductRail
+          id="ai-products"
+          title="AI 为你精选"
+          description="浏览商城精选，或向 AI 导购咨询搭配与尺码"
           products={featuredProducts}
           region={region}
           href="/store"
+          horizontal
         />
         <ProductRail
           id="new-products"

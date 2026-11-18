@@ -1,6 +1,7 @@
 import React, { Suspense } from "react"
 
 import { HttpTypes } from "@medusajs/types"
+import ImageGallery from "@modules/products/components/image-gallery"
 import VariantImageGallery from "@modules/products/components/image-gallery/variant-image-gallery"
 import ProductActions from "@modules/products/components/product-actions"
 import ProductOnboardingCta from "@modules/products/components/product-onboarding-cta"
@@ -28,11 +29,13 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   return (
     <>
       <div
-        className="content-container grid grid-cols-1 gap-6 py-6 small:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_300px] small:gap-8 medium:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_330px]"
+        className="content-container grid grid-cols-1 gap-5 py-6 small:grid-cols-2 medium:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_300px] xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_330px]"
         data-testid="product-container"
       >
-        <div className="min-w-0 small:sticky small:top-32 small:self-start">
-          <VariantImageGallery product={product} />
+        <div className="min-w-0 medium:sticky medium:top-32 medium:self-start">
+          <Suspense fallback={<ImageGallery images={product.images ?? []} thumbnail={product.thumbnail} title={product.title} />}>
+            <VariantImageGallery product={product} />
+          </Suspense>
         </div>
 
         <div className="min-w-0">
@@ -44,7 +47,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
           </div>
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-y-4 small:sticky small:top-32 small:self-start">
+        <aside className="flex min-w-0 flex-col gap-y-4 small:col-start-2 medium:sticky medium:top-32 medium:col-start-auto medium:self-start">
           <ProductOnboardingCta />
           <ProductActions product={product} region={region} />
         </aside>

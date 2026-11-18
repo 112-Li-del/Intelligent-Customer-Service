@@ -17,7 +17,7 @@ const StoreTemplate = ({ currencyCode }: { currencyCode: string }) => {
         <h1 data-testid="store-page-title">全部商品</h1>
       </div>
 
-      <div className="flex flex-col small:flex-row small:items-start">
+      <div className="flex flex-col gap-5 small:flex-row small:items-start small:gap-6">
         <InstantSearch
           indexName={PRODUCT_INDEX_NAME}
           searchClient={searchClient as unknown as SearchClient}

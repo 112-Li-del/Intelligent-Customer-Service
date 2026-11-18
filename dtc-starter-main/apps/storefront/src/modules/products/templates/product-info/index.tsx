@@ -13,6 +13,17 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
   )
   const demoRating = (4.6 + (seed % 4) / 10).toFixed(1)
   const demoReviewCount = 32 + (seed % 268)
+  const specification = (key: string) => {
+    const value = product.metadata?.[key]
+    return typeof value === "string" ? value.trim() : ""
+  }
+  const materials = product.options?.find(({ title }) => /^(材质|面料|material)$/i.test(title))
+  const specs = [
+    ["材质", product.material || specification("material") || materials?.values?.map(({ value }) => value).join(" / ")],
+    ["版型", specification("fit")],
+    ["适用季节", specification("season")],
+    ["发货地", specification("shipping_origin")],
+  ]
 
   return (
     <div id="product-info">
@@ -76,6 +87,17 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
               "商家暂未提供商品介绍，可查看下方规格或咨询 AI 客服。"}
           </p>
         </div>
+        <section aria-labelledby="core-specs-title">
+          <h2 id="core-specs-title" className="text-sm font-semibold text-brand-ink">核心规格速览</h2>
+          <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-100 bg-gray-100">
+            {specs.map(([label, value]) => (
+              <div key={label} className="min-w-0 bg-[#F7F8F8] px-3 py-2.5">
+                <dt className="text-xs text-gray-500">{label}</dt>
+                <dd className="mt-1 break-words text-sm font-medium text-brand-ink">{value || "商家待补充"}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
     </div>
   )

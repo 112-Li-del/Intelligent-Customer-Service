@@ -7,38 +7,45 @@ import Image from "next/image"
 
 type DiscoveryCardsProps = {
   products: HttpTypes.StoreProduct[]
+  newestProducts: HttpTypes.StoreProduct[]
   collections: HttpTypes.StoreCollection[]
 }
 
-const ProductThumb = ({ product }: { product?: HttpTypes.StoreProduct }) => {
-  const image = product?.thumbnail || product?.images?.[0]?.url
+const categoryLabels: Record<string, string> = {
+  sweatshirt: "卫衣系列",
+  sweatpants: "休闲长裤",
+  "t-shirt": "短袖上衣",
+  shorts: "休闲短裤",
+}
+
+const ProductThumb = ({ product }: { product: HttpTypes.StoreProduct }) => {
+  const image = product.thumbnail || product.images?.[0]?.url
+  const label = categoryLabels[product.handle] || product.title
 
   return (
-    <div className="relative aspect-square overflow-hidden rounded-md bg-gray-100">
+    <LocalizedClientLink href={`/products/${product.handle}`} className="group min-w-0 rounded-md bg-[#F7F8F8] p-2">
+      <div className="relative aspect-[4/3] overflow-hidden rounded">
       {image ? (
         <Image
           src={image}
-          alt={product?.title || "商品图片"}
+          alt=""
           fill
           sizes="(max-width: 768px) 30vw, 140px"
-          className="object-cover transition-transform duration-300 hover:scale-105"
+          className="object-contain transition-transform duration-300 motion-safe:group-hover:scale-105"
         />
       ) : (
         <div className="flex h-full items-center justify-center text-gray-300">
           <PlaceholderImage size={28} />
         </div>
       )}
-    </div>
+      </div>
+      <p className="mt-1.5 truncate text-xs font-medium text-brand-ink">{label}</p>
+    </LocalizedClientLink>
   )
 }
 
-const CardHeading = ({ index, title }: { index: string; title: string }) => (
-  <div className="flex items-start justify-between gap-3">
-    <h2 className="text-lg font-bold leading-7 text-brand-ink">{title}</h2>
-    <span className="text-xs font-semibold tracking-widest text-gray-300">
-      {index}
-    </span>
-  </div>
+const CardHeading = ({ title }: { title: string }) => (
+  <h2 className="text-lg font-bold leading-7 text-brand-ink">{title}</h2>
 )
 
 const CardLink = ({ href, children }: { href: string; children: string }) => (
@@ -51,7 +58,7 @@ const CardLink = ({ href, children }: { href: string; children: string }) => (
   </LocalizedClientLink>
 )
 
-const DiscoveryCards = ({ products, collections }: DiscoveryCardsProps) => {
+const DiscoveryCards = ({ products, newestProducts, collections }: DiscoveryCardsProps) => {
   const firstCollection = collections[0]
 
   return (
@@ -61,16 +68,13 @@ const DiscoveryCards = ({ products, collections }: DiscoveryCardsProps) => {
     >
       <div className="grid grid-cols-1 gap-5 xsmall:grid-cols-2 xl:grid-cols-4">
         <article className="store-card flex min-h-[340px] flex-col p-5 transition-shadow hover:shadow-card-hover">
-          <CardHeading index="01" title="潮流服饰精选" />
+          <CardHeading title="潮流服饰精选" />
           <p className="mt-1 text-xs leading-5 text-gray-500">
             从日常基础款，到值得尝试的新搭配
           </p>
           <div className="mt-5 grid grid-cols-2 gap-3">
-            {Array.from({ length: 4 }, (_, index) => (
-              <ProductThumb
-                key={products[index]?.id || index}
-                product={products[index]}
-              />
+            {products.slice(0, 4).map((product) => (
+              <ProductThumb key={product.id} product={product} />
             ))}
           </div>
           <CardLink
@@ -85,23 +89,20 @@ const DiscoveryCards = ({ products, collections }: DiscoveryCardsProps) => {
         </article>
 
         <article className="store-card flex min-h-[340px] flex-col p-5 transition-shadow hover:shadow-card-hover">
-          <CardHeading index="02" title="新品尖货速递" />
+          <CardHeading title="新品尖货速递" />
           <p className="mt-1 text-xs leading-5 text-gray-500">
             新上架商品集中看，快速找到新鲜感
           </p>
-          <div className="mt-5 grid flex-1 grid-cols-2 gap-3">
-            {Array.from({ length: 2 }, (_, index) => (
-              <ProductThumb
-                key={products[index + 1]?.id || index}
-                product={products[index + 1]}
-              />
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {newestProducts.slice(0, 4).map((product) => (
+              <ProductThumb key={product.id} product={product} />
             ))}
           </div>
           <CardLink href="/#new-products">逛逛本周新品</CardLink>
         </article>
 
         <article className="store-card flex min-h-[340px] flex-col overflow-hidden p-5 transition-shadow hover:shadow-card-hover">
-          <CardHeading index="03" title="预算友好清单" />
+          <CardHeading title="预算友好清单" />
           <p className="mt-1 text-xs leading-5 text-gray-500">
             先看需求，再看价格，买得清楚也买得合适
           </p>
