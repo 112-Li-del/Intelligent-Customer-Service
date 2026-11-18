@@ -1,2 +1,40 @@
-/dtc-starter-main/.pnpm-store/
+# Local AI assistant data
+.workbuddy/
+.codex/
+.claude/
+.cursor/
+.windsurf/
+.trae/
+.aider*
+
+# Local editor settings and history
+.idea/
+.vscode/
+.history/
+*.swp
+*.swo
+*~
+
+# Dependencies, caches and generated output
+node_modules/
+.pnpm-store/
+.next/
+.medusa/
+.turbo/
+.cache/
+coverage/
+.vercel/
 *.tsbuildinfo
+
+# Local credentials (keep shareable configuration templates)
+.env
+.env.*
+!.env.template
+!.env.example
+!.env.sample
+
+# Local logs and operating system files
+*.log
+.DS_Store
+Thumbs.db
+Desktop.ini
