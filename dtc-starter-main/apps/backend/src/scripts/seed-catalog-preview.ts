@@ -20,7 +20,7 @@ const categories = {
 
 const skuFor = (handle: string) => `ZX-${handle.toUpperCase()}`
 
-export default async function seedCatalogPreview({ container }: ExecArgs) {
+export default async function seedCatalogPreview({ container }: Pick<ExecArgs, "container">) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const { data: [store] } = await query.graph({
@@ -140,9 +140,14 @@ export default async function seedCatalogPreview({ container }: ExecArgs) {
     fields: ["id"],
     filters: { handle: catalog.map(({ handle }) => handle) },
   })
-  await container.resolve(Modules.SEARCH).ingest({
-    name: "product.created",
-    data: products.map(({ id }) => ({ id })),
-  })
+  const search = container.resolve(Modules.SEARCH)
+  const indexes = await search.listIndexes()
+  // On a fresh database, Medusa seeds the product index at backend startup.
+  if (indexes.some((index) => index.name === "product" && index.status === "ready")) {
+    await search.ingest({
+      name: "product.created",
+      data: products.map(({ id }) => ({ id })),
+    })
+  }
   logger.info(`Preview catalog ready: ${products.length} products.`)
 }
