@@ -1,29 +1,28 @@
 import { HttpTypes } from "@medusajs/types"
-import { ArrowPath, ShieldCheck, StarSolid, TruckFast } from "@medusajs/icons"
+import { ArrowPath, ShieldCheck, TruckFast } from "@medusajs/icons"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { getPreviewProductDetails, summarizePreviewReviews } from "@lib/util/preview-product-details"
+import ProductReviewSummary from "@modules/products/components/product-review-summary"
 
 type ProductInfoProps = {
   product: HttpTypes.StoreProduct
 }
 
 const ProductInfo = ({ product }: ProductInfoProps) => {
-  const seed = Array.from(product.id).reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0
-  )
-  const demoRating = (4.6 + (seed % 4) / 10).toFixed(1)
-  const demoReviewCount = 32 + (seed % 268)
   const specification = (key: string) => {
     const value = product.metadata?.[key]
     return typeof value === "string" ? value.trim() : ""
   }
   const materials = product.options?.find(({ title }) => /^(材质|面料|material)$/i.test(title))
-  const specs = [
+  const coreSpecs = [
     ["材质", product.material || specification("material") || materials?.values?.map(({ value }) => value).join(" / ")],
     ["版型", specification("fit")],
     ["适用季节", specification("season")],
     ["发货地", specification("shipping_origin")],
   ]
+  const { specs: previewSpecs, reviews } = getPreviewProductDetails(product.metadata)
+  const specs = previewSpecs.length ? previewSpecs : coreSpecs
+  const reviewSummary = summarizePreviewReviews(reviews)
 
   return (
     <div id="product-info">
@@ -49,18 +48,13 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
           {product.title}
         </h1>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-gray-100 pb-4 text-sm">
-          <span
-            className="flex items-center text-[#FFA41C]"
-            aria-label={`演示评分 ${demoRating} 分`}
-          >
-            {Array.from({ length: 5 }, (_, index) => (
-              <StarSolid key={index} className="h-4 w-4" />
-            ))}
-          </span>
-          <span className="font-semibold text-brand-ink">{demoRating}</span>
-          <span className="text-gray-500">{demoReviewCount} 条演示评价</span>
-        </div>
+        {reviewSummary.count ? (
+          <a href="#product-reviews" className="flex w-fit items-center gap-2 text-sm hover:underline">
+            <ProductReviewSummary {...reviewSummary} />
+          </a>
+        ) : (
+          <ProductReviewSummary {...reviewSummary} />
+        )}
 
         <div className="grid gap-3 rounded-lg bg-gray-50 p-4 text-sm text-gray-600 xsmall:grid-cols-3">
           <div className="flex items-center gap-2">

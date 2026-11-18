@@ -11,7 +11,6 @@ import {
 } from "./attributes"
 import CurrentRefinements from "./current-refinements"
 import OnSaleToggle from "./on-sale-toggle"
-import OptionRefinements from "./option-refinements"
 import PriceRange from "./price-range"
 import RefinementGroup from "./refinement-group"
 
@@ -48,7 +47,6 @@ const StoreRefinements = ({ currencyCode }: { currencyCode: string }) => {
       <div id="store-filter-controls" className={`${isExpanded ? "flex" : "hidden"} flex-col gap-6 p-4 small:flex`}>
         <SortProducts currencyCode={currencyCode} />
         <CurrentRefinements currencyCode={currencyCode} />
-        <OptionRefinements />
         <PriceRange currencyCode={currencyCode} />
         <OnSaleToggle currencyCode={currencyCode} />
         <RefinementGroup attribute={CATEGORY_ATTRIBUTE} title="分类" />

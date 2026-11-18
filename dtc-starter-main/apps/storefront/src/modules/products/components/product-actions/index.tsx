@@ -2,7 +2,8 @@
 
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
-import { openAiChat } from "@lib/util/ai-chat-events"
+import { openAiChat, registerAiChatProduct } from "@lib/util/ai-chat-events"
+import { getPreviewProductDetails } from "@lib/util/preview-product-details"
 import { notifyCartUpdated } from "@lib/util/cart-events"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { isVariantInStock } from "@lib/util/inventory"
@@ -54,7 +55,6 @@ export default function ProductActions({
   const [isBuying, setIsBuying] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const countryCode = useParams().countryCode as string
-
   const selectedVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) {
       return
@@ -65,6 +65,30 @@ export default function ProductActions({
       return isEqual(variantOptions, options)
     })
   }, [product.variants, options])
+
+  const sizeOption = product.options?.find(({ title }) => /^(尺码|尺寸|size)$/i.test(title.trim()))
+  const size = sizeOption ? options[sizeOption.id] : undefined
+  const variantId = selectedVariant?.id
+  const chatProduct = useMemo(() => {
+    const { cheapestPrice, variantPrice } = getProductPrice({ product, variantId })
+    const { specs } = getPreviewProductDetails(product.metadata)
+    if (product.material && !specs.some(([label]) => label === "材质")) {
+      specs.unshift(["材质", product.material])
+    }
+    return {
+      name: product.title,
+      handle: product.handle,
+      thumbnail: product.thumbnail,
+      description: product.description,
+      specs,
+      size,
+      price: variantId
+        ? variantPrice?.calculated_price
+        : cheapestPrice ? `${cheapestPrice.calculated_price} 起` : undefined,
+    }
+  }, [product, size, variantId])
+
+  useEffect(() => registerAiChatProduct(pathname, chatProduct), [pathname, chatProduct])
 
   const setOptionValue = (optionId: string, value: string) => {
     setOptions((previous) => ({
@@ -175,25 +199,11 @@ export default function ProductActions({
   }
 
   const askAiAboutProduct = () => {
-    const sizeOption = product.options?.find(({ title }) => /^(尺码|尺寸|size)$/i.test(title.trim()))
-    const size = sizeOption ? options[sizeOption.id] : undefined
-    const { cheapestPrice, variantPrice } = getProductPrice({
-      product,
-      variantId: selectedVariant?.id,
-    })
-    const price = selectedVariant
-      ? variantPrice?.calculated_price
-      : cheapestPrice ? `${cheapestPrice.calculated_price} 起` : undefined
+    const { price } = chatProduct
 
     openAiChat({
-      query: `我在看「${product.title}」${size ? `，已选尺码 ${size}` : ""}${price ? `，页面价格 ${price}` : ""}。这款适合我吗？请帮我判断尺码和使用场景。`,
-      product: {
-        name: product.title,
-        handle: product.handle,
-        thumbnail: product.thumbnail,
-        size,
-        price,
-      },
+      query: `我在看「${product.title}」${size ? `，已选尺码 ${size}` : ""}${price ? `，页面价格 ${price}` : ""}。这款适合我吗？${sizeOption ? "请帮我判断尺码和使用场景。" : "请介绍主要规格和适用场景。"}`,
+      product: chatProduct,
     })
   }
 

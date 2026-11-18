@@ -80,4 +80,16 @@ pnpm.cmd --dir apps/storefront run dev
 
 已有本地环境时，运行一次数据库迁移，并将 `apps/storefront/.env.local` 中的 `NEXT_PUBLIC_DEFAULT_REGION` 改为 `cn`，然后重启前后端。
 
+### 扩充本地演示商品
+
+在已完成初始化的本地演示数据库上，从 `dtc-starter-main` 运行以下命令。脚本为 4 款原有商品补充资料，并新增 8 款跨品类商品和样例评价。重复运行可以更新演示资料，并跳过已有商品和库存记录。
+
+```powershell
+pnpm.cmd --dir apps/backend exec medusa exec ./src/scripts/seed-catalog-preview.ts
+```
+
+已经导入过这批商品的本地环境可以重新执行同一命令，将评价汇总同步到商品搜索索引。
+
+刷新商品列表后可打开任意商品详情。在详情页打开知选 AI 助手，可以查询该商品的参数和使用说明。当前演示按关键词匹配商品资料。评价是为演示编写的样例。
+
 提交到 GitHub 时，环境变量字段通过 `.env.template` 同步，本机密码和连接配置填在 Git 忽略的 `.env` 或 `.env.local` 中。

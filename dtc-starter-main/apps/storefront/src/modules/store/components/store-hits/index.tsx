@@ -20,6 +20,8 @@ type ProductHit = Hit<
     title: string | null
     handle: string | null
     thumbnail: string | null
+    review_rating?: number | null
+    review_count?: number | null
   } & HitPricing
 >
 
@@ -113,7 +115,7 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
         >
           {items.map((hit) =>
             hit.handle ? (
-              <li key={hit.objectID}>
+              <li key={hit.objectID} className="min-w-0">
                 <ProductPreview
                   product={currentCatalog?.products.get(hit.id ?? hit.objectID) ?? {
                     id: hit.id ?? hit.objectID,
@@ -122,6 +124,7 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
                     thumbnail: hit.thumbnail,
                   }}
                   isLoading={!currentCatalog}
+                  indexedReviews={{ rating: hit.review_rating, count: hit.review_count }}
                   fallbackPrice={<HitPrice hit={hit} currencyCode={currencyCode} />}
                 />
               </li>

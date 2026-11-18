@@ -16,6 +16,7 @@ const PRODUCT_GRAPH_FIELDS = [
   "description",
   "handle",
   "thumbnail",
+  "metadata",
   "status",
   "created_at",
   "sales_channels.id",
@@ -31,6 +32,7 @@ type ProductRow = {
   description?: string | null;
   handle?: string | null;
   thumbnail?: string | null;
+  metadata?: Record<string, unknown> | null;
   status?: string | null;
   created_at?: string | Date | null;
   deleted_at?: string | Date | null;
@@ -51,6 +53,8 @@ const productFields = search.define({
   handle: search.keyword().retrievable(),
   // Returned on hits only: never filtered, sorted or faceted on.
   thumbnail: search.keyword().retrievable(),
+  review_rating: search.float().retrievable(),
+  review_count: search.float().retrievable(),
   created_at: search.date().sortable().retrievable(),
   category: search.keyword().array().filterable().facetable().retrievable(),
   labels: search.keyword().array().filterable().facetable().retrievable(),
@@ -88,6 +92,24 @@ function chineseSearchTerms(values: (string | null | undefined)[]): string {
   return [...terms].join(" ")
 }
 
+function toReviewSummary(metadata: ProductRow["metadata"]) {
+  const details = metadata?.preview_details as { reviews?: unknown } | undefined;
+  // Match the storefront's preview review validation. Only expose the summary.
+  const ratings = Array.isArray(details?.reviews)
+    ? details.reviews
+        .filter((review) => review && typeof review.author === "string" &&
+          typeof review.text === "string" && Number.isInteger(review.rating) &&
+          review.rating >= 1 && review.rating <= 5)
+        .map((review) => review.rating as number)
+    : [];
+  return {
+    review_rating: ratings.length
+      ? ratings.reduce((total, rating) => total + rating, 0) / ratings.length
+      : null,
+    review_count: ratings.length,
+  };
+}
+
 function toDocument(
   product: ProductRow,
   pricing: Parameters<typeof toProductPricing>[0],
@@ -111,6 +133,7 @@ function toDocument(
     chinese_terms: chineseSearchTerms([product.title, product.description, ...category]),
     handle: product.handle ?? null,
     thumbnail: product.thumbnail ?? null,
+    ...toReviewSummary(product.metadata),
     created_at: product.created_at ?? null,
     category,
     labels,

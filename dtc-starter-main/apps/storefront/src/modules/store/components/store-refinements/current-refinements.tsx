@@ -8,7 +8,6 @@ import { convertToLocale } from "@lib/util/money"
 import {
   CATEGORY_ATTRIBUTE,
   LABELS_ATTRIBUTE,
-  OPTION_VALUES_ATTRIBUTE,
 } from "./attributes"
 
 type Refinement = ReturnType<
@@ -16,22 +15,10 @@ type Refinement = ReturnType<
 >["items"][number]["refinements"][number]
 
 /**
- * What a single refinement reads as on its chip. The raw label is the facet
- * value, which is the option's `Size:M` form for options and a bare `true` for
- * the on-sale toggle — neither says what it filters on out of context.
+ * Format the raw facet label for the selected-filter chip.
  */
 function refinementLabel(refinement: Refinement, currencyCode: string) {
   const { attribute, label, value, operator } = refinement
-
-  if (attribute === OPTION_VALUES_ATTRIBUTE) {
-    const separator = String(value).indexOf(":")
-
-    return separator < 1
-      ? label
-      : `${String(value).slice(0, separator)}: ${String(value).slice(
-          separator + 1
-        )}`
-  }
 
   if (attribute === priceAttribute("on_sale", currencyCode)) {
     return "促销"
