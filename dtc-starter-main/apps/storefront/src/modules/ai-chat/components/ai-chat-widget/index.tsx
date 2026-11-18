@@ -4,6 +4,9 @@ import {
   AI_CHAT_EVENT,
   AiChatOpenDetail,
   AiChatProduct,
+  getAiChatPageProduct,
+  getServerAiChatPageProduct,
+  subscribeToAiChatPageProduct,
 } from "@lib/util/ai-chat-events"
 import {
   ArrowRight,
@@ -21,7 +24,9 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react"
+import { getProductReply } from "./product-reply"
 
 type ChatMessage = {
   id: number
@@ -49,10 +54,12 @@ const getMockReply = (query: string, product?: AiChatProduct) => {
     return "退换货条件会受到商品类型、订单状态和地区政策影响。你可以先查看商品详情页的配送与退货说明，最终以下单时的政策为准；如果告诉我具体商品，我也可以帮你整理需要确认的要点。"
   }
 
+  if (product) {
+    return getProductReply(query, product)
+  }
+
   if (query.includes("尺码") || query.includes("尺寸")) {
-    return product
-      ? `针对「${product.name}」，建议先确认你平时穿着的尺码、偏好的宽松程度，以及详情页提供的规格参数。你也可以告诉我身高、体重和穿着习惯，我会帮你做更具体的判断。`
-      : "选尺码时建议结合身高、体重、平时常穿尺码和偏好的宽松程度判断。把这些信息告诉我，我可以帮你缩小选择范围。"
+    return "选尺码时建议结合身高、体重、平时常穿尺码和偏好的宽松程度判断。打开商品详情页后，可以查询该商品提供的尺码资料。"
   }
 
   if (
@@ -61,10 +68,6 @@ const getMockReply = (query: string, product?: AiChatProduct) => {
     query.includes("买")
   ) {
     return "可以。为了给你更准确的建议，请告诉我：这件商品主要在什么场景使用、预算范围是多少、你更在意材质、版型、品牌还是价格。你也可以直接发一个商品名，我会围绕它继续分析。"
-  }
-
-  if (product) {
-    return `我会围绕「${product.name}」来回答。当前是前端演示回复；接入 RAG 后，我会结合商品资料、库存、规格和售后政策给出更准确的建议。`
   }
 
   return "我已收到你的问题。当前处于演示模式；接入商品知识库后，我会结合真实商品信息继续回答。你也可以换个说法，或点击上方快捷问题开始。"
@@ -104,15 +107,27 @@ const requestAssistantReply = async (
   return getMockReply(query, product)
 }
 
-const AiChatWidget = () => {
-  const pathname = usePathname()
+const AiChatConversation = ({ pathname }: { pathname: string }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [productContext, setProductContext] = useState<
-    AiChatProduct | undefined
-  >()
+  const [openedProduct, setOpenedProduct] = useState<AiChatProduct>()
+  const pageProduct = useSyncExternalStore(
+    subscribeToAiChatPageProduct,
+    getAiChatPageProduct,
+    getServerAiChatPageProduct
+  )
+  const productContext = pageProduct?.pathname === pathname ? pageProduct.product : openedProduct
+  const quickPrompts = productContext
+    ? [
+        "介绍这款商品",
+        ...(productContext.specs ?? [])
+          .filter(([label]) => label !== "材质")
+          .slice(0, 3)
+          .map(([label]) => `了解${label}`),
+      ]
+    : QUICK_PROMPTS
   const nextMessageId = useRef(1)
   const messageListRef = useRef<HTMLDivElement>(null)
   const isProductPage = pathname.includes("/products/")
@@ -122,10 +137,6 @@ const AiChatWidget = () => {
       const query = rawQuery.trim()
       if (!query || isLoading) {
         return
-      }
-
-      if (product) {
-        setProductContext(product)
       }
 
       const userMessage: ChatMessage = {
@@ -164,7 +175,7 @@ const AiChatWidget = () => {
       setIsOpen(true)
 
       if (detail.product) {
-        setProductContext(detail.product)
+        setOpenedProduct(detail.product)
       }
 
       if (detail.query) {
@@ -252,7 +263,7 @@ const AiChatWidget = () => {
                   知选 AI 智能客服
                 </h2>
                 <p className="mt-0.5 text-xs text-gray-300">
-                  演示模式 · 已预留 RAG 接口
+                  {productContext ? "当前商品问答" : "演示模式"}
                 </p>
               </div>
             </div>
@@ -302,7 +313,7 @@ const AiChatWidget = () => {
                 <div
                   key={message.id}
                   className={clx(
-                    "max-w-[86%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
+                    "max-w-[86%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
                     message.role === "assistant"
                       ? "self-start rounded-tl-sm border border-gray-100 bg-white text-brand-ink"
                       : "self-end rounded-tr-sm bg-brand-navy text-white"
@@ -328,7 +339,7 @@ const AiChatWidget = () => {
 
           {messages.length === 1 && (
             <div className="flex gap-2 overflow-x-auto border-t border-gray-100 bg-white px-4 py-3 no-scrollbar">
-              {QUICK_PROMPTS.map((prompt) => (
+              {quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
@@ -378,4 +389,8 @@ const AiChatWidget = () => {
   )
 }
 
-export default AiChatWidget
+export default function AiChatWidget() {
+  const pathname = usePathname()
+  const conversationKey = pathname.includes("/products/") ? pathname : "storefront"
+  return <AiChatConversation key={conversationKey} pathname={pathname} />
+}

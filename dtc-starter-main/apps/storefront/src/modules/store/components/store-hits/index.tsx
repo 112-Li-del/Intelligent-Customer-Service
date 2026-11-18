@@ -7,6 +7,7 @@ import { useHits, useInstantSearch } from "react-instantsearch"
 import useSearchSettled from "@lib/hooks/use-search-settled"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Text } from "@modules/common/components/ui"
+import ProductReviewSummary from "@modules/products/components/product-review-summary"
 import Thumbnail from "@modules/products/components/thumbnail"
 import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
 import SearchPagination from "./pagination"
@@ -17,6 +18,8 @@ type ProductHit = Hit<
     title: string | null
     handle: string | null
     thumbnail: string | null
+    review_rating?: number | null
+    review_count?: number | null
   } & HitPricing
 >
 
@@ -76,14 +79,19 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
         >
           {items.map((hit) =>
             hit.handle ? (
-              <li key={hit.objectID}>
+              <li key={hit.objectID} className="min-w-0">
                 <LocalizedClientLink
                   href={`/products/${hit.handle}`}
                   className="group"
                 >
                   <div data-testid="product-wrapper">
-                    <Thumbnail thumbnail={hit.thumbnail} size="full" />
-                    <div className="flex txt-compact-medium mt-4 justify-between">
+                    <Thumbnail
+                      thumbnail={hit.thumbnail}
+                      alt={hit.title ?? ""}
+                      size="square"
+                      fit="contain"
+                    />
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 txt-compact-medium mt-4">
                       <Text
                         className="text-ui-fg-subtle"
                         data-testid="product-title"
@@ -92,6 +100,10 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
                       </Text>
                       <HitPrice hit={hit} currencyCode={currencyCode} />
                     </div>
+                    <ProductReviewSummary
+                      rating={hit.review_rating}
+                      count={hit.review_count}
+                    />
                   </div>
                 </LocalizedClientLink>
               </li>

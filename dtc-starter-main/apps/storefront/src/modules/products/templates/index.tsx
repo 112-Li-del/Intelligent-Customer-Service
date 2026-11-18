@@ -1,4 +1,5 @@
 import React, { Suspense } from "react"
+import { getPreviewProductDetails } from "@lib/util/preview-product-details"
 
 import { HttpTypes } from "@medusajs/types"
 import VariantImageGallery from "@modules/products/components/image-gallery/variant-image-gallery"
@@ -25,6 +26,8 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
     return notFound()
   }
 
+  const { reviews } = getPreviewProductDetails(product.metadata)
+
   return (
     <>
       <div
@@ -49,6 +52,26 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
           <ProductActions product={product} region={region} />
         </aside>
       </div>
+
+      {reviews.length > 0 && (
+        <div className="content-container my-8">
+          <section id="product-reviews" className="store-card scroll-mt-32 p-5 small:p-7">
+            <h2 className="text-xl font-semibold text-brand-ink">商品评价</h2>
+            <p className="mt-1 text-sm text-gray-500">以下为模拟购物场景的样例评价。</p>
+            <ul className="mt-4 divide-y divide-gray-100">
+              {reviews.map(({ author, rating, text }) => (
+                <li key={`${author}-${text}`} className="py-4">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <span className="font-medium text-brand-ink">{author}</span>
+                    <span className="font-medium text-[#8A4B08]">{rating} / 5</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-gray-700">{text}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      )}
 
       <div
         className="content-container my-8 small:my-12"

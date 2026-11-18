@@ -1,8 +1,10 @@
 import { getProductPrice } from "@lib/util/get-product-price"
 import { isVariantInStock } from "@lib/util/inventory"
+import { getPreviewProductDetails, summarizePreviewReviews } from "@lib/util/preview-product-details"
 import { HttpTypes } from "@medusajs/types"
-import { StarSolid, TruckFast } from "@medusajs/icons"
+import { TruckFast } from "@medusajs/icons"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ProductReviewSummary from "../product-review-summary"
 import Thumbnail from "../thumbnail"
 import PreviewPrice from "./price"
 
@@ -16,12 +18,7 @@ export default function ProductPreview({
   region: HttpTypes.StoreRegion
 }) {
   const { cheapestPrice } = getProductPrice({ product })
-  const seed = Array.from(product.id).reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0
-  )
-  const demoRating = (4.6 + (seed % 4) / 10).toFixed(1)
-  const demoReviewCount = 32 + (seed % 268)
+  const { reviews } = getPreviewProductDetails(product.metadata)
   const inStock = product.variants?.some(isVariantInStock) ?? false
 
   return (
@@ -64,18 +61,8 @@ export default function ProductPreview({
           {product.title}
         </h3>
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-          <span
-            className="flex items-center text-[#FFA41C]"
-            aria-label={`演示评分 ${demoRating} 分`}
-          >
-            {Array.from({ length: 5 }, (_, index) => (
-              <StarSolid key={index} className="h-3.5 w-3.5" />
-            ))}
-          </span>
-          <span className="font-semibold text-brand-ink">{demoRating}</span>
-          <span className="text-gray-500">({demoReviewCount})</span>
-          <span className="text-[10px] text-gray-400">演示评分</span>
+        <div className="mt-2">
+          <ProductReviewSummary {...summarizePreviewReviews(reviews)} />
         </div>
 
         <div className="mt-3">

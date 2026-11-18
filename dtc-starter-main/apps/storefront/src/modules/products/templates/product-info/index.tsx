@@ -1,18 +1,16 @@
 import { HttpTypes } from "@medusajs/types"
-import { ArrowPath, ShieldCheck, StarSolid, TruckFast } from "@medusajs/icons"
+import { ArrowPath, ShieldCheck, TruckFast } from "@medusajs/icons"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { getPreviewProductDetails, summarizePreviewReviews } from "@lib/util/preview-product-details"
+import ProductReviewSummary from "@modules/products/components/product-review-summary"
 
 type ProductInfoProps = {
   product: HttpTypes.StoreProduct
 }
 
 const ProductInfo = ({ product }: ProductInfoProps) => {
-  const seed = Array.from(product.id).reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0
-  )
-  const demoRating = (4.6 + (seed % 4) / 10).toFixed(1)
-  const demoReviewCount = 32 + (seed % 268)
+  const { specs, reviews } = getPreviewProductDetails(product.metadata)
+  const reviewSummary = summarizePreviewReviews(reviews)
 
   return (
     <div id="product-info">
@@ -38,18 +36,13 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
           {product.title}
         </h1>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-gray-100 pb-4 text-sm">
-          <span
-            className="flex items-center text-[#FFA41C]"
-            aria-label={`演示评分 ${demoRating} 分`}
-          >
-            {Array.from({ length: 5 }, (_, index) => (
-              <StarSolid key={index} className="h-4 w-4" />
-            ))}
-          </span>
-          <span className="font-semibold text-brand-ink">{demoRating}</span>
-          <span className="text-gray-500">{demoReviewCount} 条演示评价</span>
-        </div>
+        {reviewSummary.count ? (
+          <a href="#product-reviews" className="flex w-fit items-center gap-2 text-sm hover:underline">
+            <ProductReviewSummary {...reviewSummary} />
+          </a>
+        ) : (
+          <ProductReviewSummary {...reviewSummary} />
+        )}
 
         <div className="grid gap-3 rounded-lg bg-gray-50 p-4 text-sm text-gray-600 xsmall:grid-cols-3">
           <div className="flex items-center gap-2">
@@ -76,6 +69,20 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
               "商家暂未提供商品介绍，可查看下方规格或咨询 AI 客服。"}
           </p>
         </div>
+
+        {specs.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-brand-ink">商品参数与使用说明</h2>
+            <dl className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-100 text-sm">
+              {specs.map(([label, value]) => (
+                <div key={label} className="grid grid-cols-[5.5rem_1fr] gap-2 p-3">
+                  <dt className="font-medium text-brand-ink">{label}</dt>
+                  <dd className="leading-6 text-gray-600">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </div>
     </div>
   )

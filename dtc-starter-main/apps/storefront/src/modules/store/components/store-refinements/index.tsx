@@ -10,7 +10,6 @@ import {
 } from "./attributes"
 import CurrentRefinements from "./current-refinements"
 import OnSaleToggle from "./on-sale-toggle"
-import OptionRefinements from "./option-refinements"
 import PriceRange from "./price-range"
 import RefinementGroup from "./refinement-group"
 
@@ -34,7 +33,6 @@ const StoreRefinements = ({ currencyCode }: { currencyCode: string }) => {
     <div className="flex flex-col gap-12 py-4 mb-8 small:px-0 pl-6 small:w-[250px] small:shrink-0 small:ml-[1.675rem]">
       <SortProducts currencyCode={currencyCode} />
       <CurrentRefinements currencyCode={currencyCode} />
-      <OptionRefinements />
       <PriceRange currencyCode={currencyCode} />
       <OnSaleToggle currencyCode={currencyCode} />
       <RefinementGroup attribute={CATEGORY_ATTRIBUTE} title="分类" />

@@ -2,7 +2,8 @@
 
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
-import { openAiChat } from "@lib/util/ai-chat-events"
+import { openAiChat, registerAiChatProduct } from "@lib/util/ai-chat-events"
+import { getPreviewProductDetails } from "@lib/util/preview-product-details"
 import { notifyCartUpdated } from "@lib/util/cart-events"
 import { isVariantInStock } from "@lib/util/inventory"
 import { HttpTypes } from "@medusajs/types"
@@ -53,6 +54,18 @@ export default function ProductActions({
   const [isBuying, setIsBuying] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const countryCode = useParams().countryCode as string
+  const chatProduct = useMemo(() => ({
+    name: product.title,
+    handle: product.handle,
+    thumbnail: product.thumbnail,
+    description: product.description,
+    specs: [
+      ...(product.material ? [["材质", product.material] as [string, string]] : []),
+      ...getPreviewProductDetails(product.metadata).specs,
+    ],
+  }), [product])
+
+  useEffect(() => registerAiChatProduct(pathname, chatProduct), [pathname, chatProduct])
 
   const selectedVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) {
@@ -174,14 +187,7 @@ export default function ProductActions({
   }
 
   const askAiAboutProduct = () => {
-    openAiChat({
-      query: `我想了解「${product.title}」的尺码、参数和选购建议。`,
-      product: {
-        name: product.title,
-        handle: product.handle,
-        thumbnail: product.thumbnail,
-      },
-    })
+    openAiChat({ product: chatProduct })
   }
 
   return (

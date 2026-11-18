@@ -1,6 +1,5 @@
 import { PRODUCT_INDEX_NAME, priceAttribute } from "@lib/search-client"
 
-export const OPTION_VALUES_ATTRIBUTE = "option_values"
 export const CATEGORY_ATTRIBUTE = "category"
 // The index calls the product's tags "labels".
 export const LABELS_ATTRIBUTE = "labels"
