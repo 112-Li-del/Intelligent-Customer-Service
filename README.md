@@ -58,7 +58,7 @@ DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@127.0.0.1:5432/medusa_preview
 
 ### 2. 初始化数据库并启动后端
 
-以下命令从 `dtc-starter-main` 目录运行。迁移会导入官方示例商品。创建管理员时，将 `YOUR_LOCAL_ADMIN_PASSWORD` 换成你自己的密码。
+以下命令从 `dtc-starter-main` 目录运行。迁移会导入 12 款共享演示商品，包含原有的 4 款服装和新增的 8 款跨品类商品。创建管理员时，将 `YOUR_LOCAL_ADMIN_PASSWORD` 换成你自己的密码。
 
 ```powershell
 pnpm.cmd --dir apps/backend exec medusa db:migrate
@@ -80,15 +80,21 @@ pnpm.cmd --dir apps/storefront run dev
 
 已有本地环境时，运行一次数据库迁移，并将 `apps/storefront/.env.local` 中的 `NEXT_PUBLIC_DEFAULT_REGION` 改为 `cn`，然后重启前后端。
 
-### 扩充本地演示商品
+### 同步共享演示商品
 
-在已完成初始化的本地演示数据库上，从 `dtc-starter-main` 运行以下命令。脚本为 4 款原有商品补充资料，并新增 8 款跨品类商品和样例评价。重复运行可以更新演示资料，并跳过已有商品和库存记录。
+团队成员拉取最新代码后，从 `dtc-starter-main` 运行以下命令，将共享商品导入各自的本地数据库，再启动或重启前后端。
+
+```powershell
+pnpm.cmd --dir apps/backend exec medusa db:migrate
+```
+
+共享清单包含商品分类、人民币价格、规格和样例评价，新增商品的图片随前台代码分发。迁移会初始化新增商品的演示库存。已经导入过的本地环境会复用已有商品和库存记录。
+
+如需单独重新同步演示资料和搜索索引，可以运行：
 
 ```powershell
 pnpm.cmd --dir apps/backend exec medusa exec ./src/scripts/seed-catalog-preview.ts
 ```
-
-已经导入过这批商品的本地环境可以重新执行同一命令，将评价汇总同步到商品搜索索引。
 
 刷新商品列表后可打开任意商品详情。在详情页打开知选 AI 助手，可以查询该商品的参数和使用说明。当前演示按关键词匹配商品资料。评价是为演示编写的样例。
 
