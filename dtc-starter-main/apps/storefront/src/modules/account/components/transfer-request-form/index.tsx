@@ -5,10 +5,9 @@ import { Heading, IconButton, Input, Text } from "@modules/common/components/ui"
 import { useActionState } from "react"
 // TODO: Re-add Toaster component when needed
 import { SubmitButton } from "@modules/checkout/components/submit-button"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 export default function TransferRequestForm() {
-  const [showSuccess, setShowSuccess] = useState(false)
 
   const [state, formAction] = useActionState(createTransferRequest, {
     success: false,
@@ -16,11 +15,8 @@ export default function TransferRequestForm() {
     order: null,
   })
 
-  useEffect(() => {
-    if (state.success && state.order) {
-      setShowSuccess(true)
-    }
-  }, [state.success, state.order])
+  const [dismissedState, setDismissedState] = useState<typeof state | null>(null)
+  const showSuccess = state.success && !!state.order && dismissedState !== state
 
   return (
     <div className="flex flex-col gap-y-4 w-full">
@@ -70,7 +66,7 @@ export default function TransferRequestForm() {
           </div>
           <IconButton
             className="h-fit"
-            onClick={() => setShowSuccess(false)}
+            onClick={() => setDismissedState(state)}
           >
             <XCircleSolid className="w-4 h-4 text-neutral-500" />
           </IconButton>

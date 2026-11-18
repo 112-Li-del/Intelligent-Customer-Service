@@ -3,7 +3,7 @@ import { Container } from "@modules/common/components/ui"
 import Checkbox from "@modules/common/components/checkbox"
 import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useMemo, useState } from "react"
 import AddressSelect from "../address-select"
 import CountrySelect from "../country-select"
 
@@ -74,16 +74,13 @@ const ShippingAddress = ({
     }
   }
 
-  useEffect(() => {
-    // Ensure cart is not null and has a shipping_address before setting form data
-    if (cart && cart.shipping_address) {
-      setFormAddress(cart?.shipping_address, cart?.email)
-    }
-
-    if (cart && !cart.email && customer?.email) {
-      setFormAddress(undefined, customer.email)
-    }
-  }, [cart]) // Add cart as a dependency
+  const address = cart?.shipping_address
+  const email = cart?.email || customer?.email || ""
+  const [previousSource, setPreviousSource] = useState({ address, email })
+  if (previousSource.address !== address || previousSource.email !== email) {
+    setPreviousSource({ address, email })
+    setFormAddress(address ?? undefined, email)
+  }
 
   const handleChange = (
     e: React.ChangeEvent<

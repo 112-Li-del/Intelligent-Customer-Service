@@ -70,7 +70,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
           leaveTo="opacity-0"
         >
           <div
-            className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
+            className="flex h-full w-full flex-col items-center justify-center gap-y-3 border-t border-gray-200 bg-white p-4 text-large-regular shadow-[0_-8px_24px_rgba(15,17,17,0.08)]"
             data-testid="mobile-actions"
           >
             <div className="flex items-center gap-x-2">
@@ -98,38 +98,38 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                 <div></div>
               )}
             </div>
-            <div className={clx("grid grid-cols-2 w-full gap-x-4", {
-              "!grid-cols-1": isSimple
-            })}>
-              {!isSimple && <Button
-                type="button"
-                onClick={open}
-                variant="secondary"
-                className="w-full"
-                data-testid="mobile-actions-button"
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span>
-                    {variant
-                      ? Object.values(options).join(" / ")
-                      : "选择规格"}
-                  </span>
-                  <ChevronDown />
-                </div>
-              </Button>}
+            <div
+              className={clx("grid grid-cols-2 w-full gap-x-4", {
+                "!grid-cols-1": isSimple,
+              })}
+            >
+              {!isSimple && (
+                <Button
+                  type="button"
+                  onClick={open}
+                  variant="secondary"
+                  className="w-full !rounded-full !border-gray-300 !text-sm"
+                  data-testid="mobile-actions-button"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span>
+                      {variant
+                        ? Object.values(options).join(" / ")
+                        : "选择规格"}
+                    </span>
+                    <ChevronDown />
+                  </div>
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={handleAddToCart}
                 disabled={!inStock || !variant}
-                className="w-full"
+                className="w-full !rounded-full !border !border-[#F2C200] !bg-brand-yellow !text-sm !font-semibold !text-brand-ink hover:!bg-brand-yellow-hover"
                 isLoading={isAdding}
                 data-testid="mobile-cart-button"
               >
-                {!variant
-                  ? "请选择规格"
-                  : !inStock
-                  ? "缺货"
-                  : "加入购物车"}
+                {!variant ? "请选择规格" : !inStock ? "缺货" : "加入购物车"}
               </Button>
             </div>
           </div>

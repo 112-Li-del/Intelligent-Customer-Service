@@ -1,7 +1,7 @@
 "use client"
 
 import type { Hit } from "instantsearch.js"
-import { useEffect, useRef } from "react"
+import { useState } from "react"
 import { useHits, useInstantSearch } from "react-instantsearch"
 
 import useSearchSettled from "@lib/hooks/use-search-settled"
@@ -34,17 +34,15 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
   const currentPage = page ?? 1
   const refinementKey = JSON.stringify(refinements)
 
-  const settled = useRef({ page: currentPage, refinementKey })
+  const [settled, setSettled] = useState({ page: currentPage, refinementKey })
 
-  useEffect(() => {
-    if (!isSearching) {
-      settled.current = { page: currentPage, refinementKey }
-    }
-  }, [isSearching, currentPage, refinementKey])
+  if (!isSearching && (settled.page !== currentPage || settled.refinementKey !== refinementKey)) {
+    setSettled({ page: currentPage, refinementKey })
+  }
 
   const isPagingOnly =
-    refinementKey === settled.current.refinementKey &&
-    currentPage !== settled.current.page
+    refinementKey === settled.refinementKey &&
+    currentPage !== settled.page
 
   const showSkeleton = hasNoResultsYet || (isSearching && isPagingOnly)
 

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useActionState } from "react";
+import React, { useActionState } from "react";
 
 import Input from "@modules/common/components/input"
 
@@ -13,7 +13,6 @@ type MyInformationProps = {
 }
 
 const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
-  const [successState, setSuccessState] = React.useState(false)
 
   const updateCustomerPhone = async (
     _currentState: Record<string, unknown>,
@@ -36,13 +35,9 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
     success: false,
   })
 
-  const clearState = () => {
-    setSuccessState(false)
-  }
-
-  useEffect(() => {
-    setSuccessState(state.success)
-  }, [state])
+  const [dismissedState, setDismissedState] = React.useState<typeof state | null>(null)
+  const successState = !!state.success && dismissedState !== state
+  const clearState = () => setDismissedState(state)
 
   return (
     <form action={formAction} className="w-full">

@@ -1,7 +1,7 @@
 "use client"
 
 import * as Slider from "@radix-ui/react-slider"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRange } from "react-instantsearch"
 
 import { indexedCurrency, priceAttribute } from "@lib/search-client"
@@ -40,11 +40,11 @@ const PriceRange = ({ currencyCode }: { currencyCode: string }) => {
 
   const [value, setValue] = useState<number[]>([from, to])
 
-  // Follow the refinement when it changes elsewhere — clearing all filters, or
-  // a bound arriving from the URL on load.
-  useEffect(() => {
+  const [previousBounds, setPreviousBounds] = useState({ from, to })
+  if (previousBounds.from !== from || previousBounds.to !== to) {
+    setPreviousBounds({ from, to })
     setValue([from, to])
-  }, [from, to])
+  }
 
   // No stats yet, or every product costs the same: nothing to slide between.
   if (!canRefine || min >= max) {

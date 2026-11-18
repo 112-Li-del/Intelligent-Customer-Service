@@ -1,97 +1,167 @@
 "use client"
 
 import { Popover, PopoverPanel, Transition } from "@headlessui/react"
-import { XMark } from "@medusajs/icons"
+import { BarsThree, ChevronRight, Sparkles, XMark } from "@medusajs/icons"
+import { openAiChat } from "@lib/util/ai-chat-events"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { Text } from "@modules/common/components/ui"
 import { Fragment } from "react"
 
-
 const sideMenuItems = [
-  { name: "首页", href: "/", testId: "home-link" },
-  { name: "商城", href: "/store", testId: "store-link" },
-  { name: "我的账户", href: "/account", testId: "account-link" },
-  { name: "购物车", href: "/cart", testId: "cart-link" },
+  {
+    name: "商城首页",
+    href: "/",
+    testId: "home-link",
+    description: "返回知选商城首页",
+  },
+  {
+    name: "全部商品",
+    href: "/store",
+    testId: "store-link",
+    description: "按分类、价格与规格筛选",
+  },
+  {
+    name: "搜索好物",
+    href: "/search",
+    testId: "search-link",
+    description: "输入关键词精准查找",
+  },
+  {
+    name: "我的账户",
+    href: "/account",
+    testId: "account-link",
+    description: "管理订单与个人信息",
+  },
+  {
+    name: "购物车",
+    href: "/cart",
+    testId: "cart-link",
+    description: "查看已选商品并结算",
+  },
 ]
 
 const SideMenu = () => {
   return (
-    <div className="h-full">
-      <div className="flex items-center h-full">
-        <Popover className="h-full flex">
-          {({ open, close }) => (
-            <>
-              <div className="relative flex h-full">
-                <Popover.Button
-                  data-testid="nav-menu-button"
-                  className="relative h-full flex items-center transition-all ease-out duration-200 focus:outline-none hover:text-ui-fg-base"
-                >
-                  菜单
-                </Popover.Button>
-              </div>
+    <Popover className="relative flex h-full shrink-0">
+      {({ open, close }) => (
+        <>
+          <Popover.Button
+            data-testid="nav-menu-button"
+            className="flex h-full shrink-0 items-center gap-2 rounded-sm px-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            <BarsThree className="h-5 w-5" />
+            <span className="hidden xsmall:inline">全部商品分类</span>
+            <span className="xsmall:hidden">分类</span>
+          </Popover.Button>
 
-              {open && (
-                <div
-                  className="fixed inset-0 z-[50] bg-black/0 pointer-events-auto"
-                  onClick={close}
-                  data-testid="side-menu-backdrop"
-                />
-              )}
+          <Transition show={open} as={Fragment}>
+            <Transition.Child
+              as={Fragment}
+              enter="transition-opacity duration-200"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity duration-150"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div
+                className="fixed inset-0 z-[60] bg-brand-navy/60 backdrop-blur-sm"
+                onClick={close}
+                data-testid="side-menu-backdrop"
+                aria-hidden="true"
+              />
+            </Transition.Child>
 
-              <Transition
-                show={open}
-                as={Fragment}
-                enter="transition ease-out duration-150"
-                enterFrom="opacity-0"
-                enterTo="opacity-100 backdrop-blur-2xl"
-                leave="transition ease-in duration-150"
-                leaveFrom="opacity-100 backdrop-blur-2xl"
-                leaveTo="opacity-0"
-              >
-                <PopoverPanel className="flex flex-col absolute w-full pr-4 sm:pr-0 sm:w-1/3 2xl:w-1/4 sm:min-w-min h-[calc(100vh-1rem)] z-[51] inset-x-0 text-sm text-ui-fg-on-color m-2 backdrop-blur-2xl">
-                  <div
-                    data-testid="nav-menu-popup"
-                    className="flex flex-col h-full bg-[rgba(3,7,18,0.5)] rounded-rounded justify-between p-6"
-                  >
-                    <div className="flex justify-end" id="xmark">
-                      <button
-                        data-testid="close-menu-button"
-                        onClick={close}
-                        aria-label="关闭菜单"
-                      >
-                        <XMark />
-                      </button>
-                    </div>
-                    <ul className="flex flex-col gap-6 items-start justify-start">
-                      {sideMenuItems.map(({ name, href, testId }) => {
-                        return (
-                          <li key={name}>
-                            <LocalizedClientLink
-                              href={href}
-                              className="text-3xl leading-10 hover:text-ui-fg-disabled"
-                              onClick={close}
-                              data-testid={testId}
-                            >
-                              {name}
-                            </LocalizedClientLink>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                    <div className="flex flex-col gap-y-6">
-                      <Text className="txt-compact-small">配送至：中国大陆</Text>
-                      <Text className="flex justify-between txt-compact-small">
-                        © {new Date().getFullYear()} 知选商城
-                      </Text>
-                    </div>
+            <Transition.Child
+              as={Fragment}
+              enter="transition-transform duration-300 ease-out"
+              enterFrom="-translate-x-full"
+              enterTo="translate-x-0"
+              leave="transition-transform duration-200 ease-in"
+              leaveFrom="translate-x-0"
+              leaveTo="-translate-x-full"
+            >
+              <PopoverPanel className="fixed inset-y-0 left-0 z-[70] flex w-[min(88vw,380px)] flex-col bg-white text-brand-ink shadow-2xl">
+                <div className="flex items-center justify-between bg-brand-navy px-6 py-5 text-white">
+                  <div>
+                    <p className="text-lg font-semibold">知选商城</p>
+                    <p className="mt-1 text-xs text-gray-300">
+                      发现适合你的每一件好物
+                    </p>
                   </div>
-                </PopoverPanel>
-              </Transition>
-            </>
-          )}
-        </Popover>
-      </div>
-    </div>
+                  <button
+                    data-testid="close-menu-button"
+                    onClick={close}
+                    aria-label="关闭菜单"
+                    className="rounded-full p-2 text-gray-300 hover:bg-white/10 hover:text-white"
+                  >
+                    <XMark className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div
+                  className="flex-1 overflow-y-auto px-4 py-6"
+                  data-testid="nav-menu-popup"
+                >
+                  <p className="px-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    快捷导航
+                  </p>
+                  <ul className="mt-3 flex flex-col gap-1">
+                    {sideMenuItems.map(
+                      ({ name, href, testId, description }) => (
+                        <li key={name}>
+                          <LocalizedClientLink
+                            href={href}
+                            className="group flex items-center justify-between rounded-lg px-3 py-3 hover:bg-gray-100"
+                            onClick={close}
+                            data-testid={testId}
+                          >
+                            <span>
+                              <span className="block text-sm font-semibold text-brand-ink">
+                                {name}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-gray-500">
+                                {description}
+                              </span>
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-gray-400 transition-transform group-hover:translate-x-0.5" />
+                          </LocalizedClientLink>
+                        </li>
+                      )
+                    )}
+                  </ul>
+
+                  <button
+                    type="button"
+                    className="mt-5 flex w-full items-center gap-3 rounded-xl bg-brand-navy p-4 text-left text-white hover:bg-brand-navy-light"
+                    onClick={() => {
+                      close()
+                      openAiChat({ query: "你好，请帮我挑选一件合适的商品。" })
+                    }}
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange text-brand-navy">
+                      <Sparkles className="h-5 w-5" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold">
+                        知选 AI 智能导购
+                      </span>
+                      <span className="mt-1 block text-xs text-gray-300">
+                        说出需求，获取选品建议
+                      </span>
+                    </span>
+                  </button>
+                </div>
+
+                <div className="border-t border-gray-200 px-7 py-5 text-xs text-gray-500">
+                  <p>配送至：中国大陆</p>
+                  <p className="mt-1">© {new Date().getFullYear()} 知选商城</p>
+                </div>
+              </PopoverPanel>
+            </Transition.Child>
+          </Transition>
+        </>
+      )}
+    </Popover>
   )
 }
 

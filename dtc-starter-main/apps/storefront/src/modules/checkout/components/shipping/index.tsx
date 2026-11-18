@@ -10,7 +10,7 @@ import Divider from "@modules/common/components/divider"
 import MedusaRadio from "@modules/common/components/radio"
 import { Button, clx, Heading, Text } from "@modules/common/components/ui"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 const PICKUP_OPTION_ON = "__PICKUP_ON"
 const PICKUP_OPTION_OFF = "__PICKUP_OFF"
@@ -51,13 +51,10 @@ const Shipping: React.FC<ShippingProps> = ({
   availableShippingMethods,
 }) => {
   const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingPrices, setIsLoadingPrices] = useState(true)
 
-  const [showPickupOptions, setShowPickupOptions] =
-    useState<string>(PICKUP_OPTION_OFF)
-  const [calculatedPricesMap, setCalculatedPricesMap] = useState<
-    Record<string, number>
-  >({})
+
+
+  const [priceResult, setPriceResult] = useState<{ requestKey: string; prices: Record<string, number> } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [shippingMethodId, setShippingMethodId] = useState<string | null>(
     cart.shipping_methods?.at(-1)?.shipping_option_id || null
@@ -69,45 +66,35 @@ const Shipping: React.FC<ShippingProps> = ({
 
   const isOpen = searchParams.get("step") === "delivery"
 
-  const _shippingMethods = availableShippingMethods?.filter(
+  const _shippingMethods = useMemo(() => availableShippingMethods?.filter(
     (sm) => (sm as unknown as { service_zone?: { fulfillment_set?: { type?: string; location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.type !== "pickup"
-  )
+  ), [availableShippingMethods])
 
-  const _pickupMethods = availableShippingMethods?.filter(
+  const _pickupMethods = useMemo(() => availableShippingMethods?.filter(
     (sm) => (sm as unknown as { service_zone?: { fulfillment_set?: { type?: string; location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.type === "pickup"
-  )
+  ), [availableShippingMethods])
 
   const hasPickupOptions = !!_pickupMethods?.length
 
+  const calculatedMethods = useMemo(() => (_shippingMethods ?? []).filter((method) => method.price_type === "calculated"), [_shippingMethods])
+  const priceRequestKey = JSON.stringify([cart.id, cart.shipping_address, cart.items, calculatedMethods])
+  const isLoadingPrices = calculatedMethods.length > 0 && priceResult?.requestKey !== priceRequestKey
+  const calculatedPricesMap = priceResult?.requestKey === priceRequestKey ? priceResult.prices : {}
+  const showPickupOptions = _pickupMethods?.some((method) => method.id === shippingMethodId) ? PICKUP_OPTION_ON : PICKUP_OPTION_OFF
+
   useEffect(() => {
-    setIsLoadingPrices(true)
-
-    if (_shippingMethods?.length) {
-      const promises = _shippingMethods
-        .filter((sm) => sm.price_type === "calculated")
-        .map((sm) => calculatePriceForShippingOption(sm.id, cart.id))
-
-      if (promises.length) {
-        Promise.allSettled(promises).then((res) => {
-          const pricesMap: Record<string, number> = {}
-          res
-            .filter((r) => r.status === "fulfilled")
-            .forEach((p) => {
-              if (p.value?.id) {
-                pricesMap[p.value.id] = p.value.amount ?? 0
-              }
-            })
-
-          setCalculatedPricesMap(pricesMap)
-          setIsLoadingPrices(false)
-        })
+    if (!calculatedMethods.length) return
+    let disposed = false
+    Promise.allSettled(calculatedMethods.map((method) => calculatePriceForShippingOption(method.id, cart.id))).then((results) => {
+      if (disposed) return
+      const prices: Record<string, number> = {}
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value?.id) prices[result.value.id] = result.value.amount ?? 0
       }
-    }
-
-    if (_pickupMethods?.find((m) => m.id === shippingMethodId)) {
-      setShowPickupOptions(PICKUP_OPTION_ON)
-    }
-  }, [availableShippingMethods])
+      setPriceResult({ requestKey: priceRequestKey, prices })
+    })
+    return () => { disposed = true }
+  }, [calculatedMethods, cart.id, priceRequestKey])
 
   const handleEdit = () => {
     router.push(pathname + "?step=delivery", { scroll: false })
@@ -119,22 +106,13 @@ const Shipping: React.FC<ShippingProps> = ({
 
   const handleSetShippingMethod = async (
     id: string,
-    variant: "shipping" | "pickup"
+    _variant: "shipping" | "pickup"
   ) => {
     setError(null)
 
-    if (variant === "pickup") {
-      setShowPickupOptions(PICKUP_OPTION_ON)
-    } else {
-      setShowPickupOptions(PICKUP_OPTION_OFF)
-    }
-
-    let currentId: string | null = null
+    const currentId = shippingMethodId
     setIsLoading(true)
-    setShippingMethodId((prev) => {
-      currentId = prev
-      return id
-    })
+    setShippingMethodId(id)
 
     await setShippingMethod({ cartId: cart.id, shippingMethodId: id })
       .catch((err) => {
@@ -147,9 +125,11 @@ const Shipping: React.FC<ShippingProps> = ({
       })
   }
 
-  useEffect(() => {
+  const [previousOpen, setPreviousOpen] = useState(isOpen)
+  if (previousOpen !== isOpen) {
+    setPreviousOpen(isOpen)
     setError(null)
-  }, [isOpen])
+  }
 
   return (
     <div className="bg-white">

@@ -1,11 +1,7 @@
 "use client"
 
-import {
-  Popover,
-  PopoverButton,
-  PopoverPanel,
-  Transition,
-} from "@headlessui/react"
+import { Popover, PopoverPanel, Transition } from "@headlessui/react"
+import { ShoppingCart } from "@medusajs/icons"
 import { retrieveCart } from "@lib/data/cart"
 import { CART_UPDATED_EVENT } from "@lib/util/cart-events"
 import { convertToLocale } from "@lib/util/money"
@@ -29,19 +25,21 @@ const CartDropdown = ({
 }) => {
   // Statically rendered pages can't read the cart cookie, so the cart is loaded in the browser.
   const [clientCart, setClientCart] = useState<HttpTypes.StoreCart | null>(null)
+  const pathname = usePathname()
   const cartState = serverCart ?? clientCart
-  const [activeTimer, setActiveTimer] = useState<NodeJS.Timer | undefined>(
-    undefined
-  )
-  const [cartDropdownOpen, setCartDropdownOpen] = useState(false)
+  const activeTimer = useRef<number | undefined>(undefined)
+  const [dropdown, setDropdown] = useState({ open: false, items: countItems(serverCart), pathname, autoClose: false })
+  const cartDropdownOpen = dropdown.open && !pathname.includes("/cart") && !pathname.includes("/checkout")
 
-  const open = () => setCartDropdownOpen(true)
-  const close = () => setCartDropdownOpen(false)
+  const open = () => setDropdown({ open: true, items: totalItems, pathname, autoClose: false })
+  const close = () => {
+    window.clearTimeout(activeTimer.current)
+    setDropdown((current) => ({ ...current, open: false }))
+  }
 
   const totalItems = countItems(cartState)
 
   const subtotal = cartState?.subtotal ?? 0
-  const itemRef = useRef<number>(totalItems || 0)
 
   useEffect(() => {
     if (serverCart) {
@@ -49,12 +47,14 @@ const CartDropdown = ({
     }
 
     let isInitialLoad = true
+    let disposed = false
     const load = () =>
       retrieveCart()
         .then((cart) => {
+          if (disposed) return
           if (isInitialLoad) {
             // Don't auto-open the dropdown for items that were already in the cart.
-            itemRef.current = countItems(cart)
+            setDropdown((current) => ({ ...current, items: countItems(cart) }))
             isInitialLoad = false
           }
           setClientCart(cart)
@@ -63,43 +63,40 @@ const CartDropdown = ({
 
     load()
     window.addEventListener(CART_UPDATED_EVENT, load)
-    return () => window.removeEventListener(CART_UPDATED_EVENT, load)
+    return () => {
+      disposed = true
+      window.removeEventListener(CART_UPDATED_EVENT, load)
+    }
   }, [serverCart])
 
-  const timedOpen = () => {
-    open()
-
-    const timer = setTimeout(close, 5000)
-
-    setActiveTimer(timer)
-  }
-
   const openAndCancel = () => {
-    if (activeTimer) {
-      clearTimeout(activeTimer)
-    }
-
+    window.clearTimeout(activeTimer.current)
     open()
   }
 
   // Clean up the timer when the component unmounts
   useEffect(() => {
     return () => {
-      if (activeTimer) {
-        clearTimeout(activeTimer)
-      }
+      window.clearTimeout(activeTimer.current)
     }
-  }, [activeTimer])
+  }, [])
 
-  const pathname = usePathname()
+  if (dropdown.items !== totalItems || dropdown.pathname !== pathname) {
+    const itemsChanged = dropdown.items !== totalItems
+    setDropdown({
+      items: totalItems, pathname,
+      open: itemsChanged && !pathname.includes("/cart") && !pathname.includes("/checkout"),
+      autoClose: itemsChanged,
+    })
+  }
 
-  // open cart dropdown when modifying the cart items, but only if we're not on the cart page
   useEffect(() => {
-    if (itemRef.current !== totalItems && !pathname.includes("/cart")) {
-      timedOpen()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalItems, itemRef.current])
+    if (!dropdown.open || !dropdown.autoClose) return
+    activeTimer.current = window.setTimeout(() => {
+      setDropdown((current) => ({ ...current, open: false }))
+    }, 5000)
+    return () => window.clearTimeout(activeTimer.current)
+  }, [dropdown])
 
   return (
     <div
@@ -108,13 +105,20 @@ const CartDropdown = ({
       onMouseLeave={close}
     >
       <Popover className="relative h-full">
-        <PopoverButton className="h-full">
-          <LocalizedClientLink
-            className="hover:text-ui-fg-base"
-            href="/cart"
-            data-testid="nav-cart-link"
-          >{`购物车（${totalItems}）`}</LocalizedClientLink>
-        </PopoverButton>
+        <LocalizedClientLink
+          className="relative flex h-full items-center gap-2 rounded-sm text-sm font-semibold text-white hover:text-brand-orange"
+          href="/cart"
+          onClick={open}
+          data-testid="nav-cart-link"
+        >
+          <span className="relative">
+            <ShoppingCart className="h-7 w-7" />
+            <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-action px-1 text-xs font-bold text-brand-navy">
+              {totalItems}
+            </span>
+          </span>
+          <span className="hidden xsmall:inline">购物车</span>
+        </LocalizedClientLink>
         <Transition
           show={cartDropdownOpen}
           as={Fragment}
@@ -127,7 +131,7 @@ const CartDropdown = ({
         >
           <PopoverPanel
             static
-            className="hidden small:block absolute top-[calc(100%+1px)] right-0 bg-white border-x border-b border-gray-200 w-[420px] text-ui-fg-base"
+            className="absolute right-0 top-[calc(100%+12px)] hidden w-[420px] overflow-hidden rounded-lg border-x border-b border-gray-200 bg-white text-ui-fg-base shadow-card-hover small:block"
             data-testid="nav-cart-dropdown"
           >
             <div className="p-4 flex items-center justify-center">
@@ -205,8 +209,7 @@ const CartDropdown = ({
                 <div className="p-4 flex flex-col gap-y-4 text-small-regular">
                   <div className="flex items-center justify-between">
                     <span className="text-ui-fg-base font-semibold">
-                      小计{" "}
-                      <span className="font-normal">（不含税）</span>
+                      小计 <span className="font-normal">（不含税）</span>
                     </span>
                     <span
                       className="text-large-semi"

@@ -27,11 +27,11 @@ const StoreSearchBox = () => {
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
-  // Follow the query when it changes elsewhere — cleared with the filters, or
-  // arriving from the URL on load, which `routing` restores after mount.
-  useEffect(() => {
+  const [previousQuery, setPreviousQuery] = useState(query)
+  if (previousQuery !== query) {
+    setPreviousQuery(query)
     setInputValue(query)
-  }, [query])
+  }
 
   const clear = () => {
     window.clearTimeout(timer.current)

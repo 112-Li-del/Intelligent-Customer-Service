@@ -11,25 +11,22 @@ type VerificationState = "verifying" | "success" | "error"
 const VerifyAccount = () => {
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
-  const [state, setState] = useState<VerificationState>("verifying")
-  // Guard against the effect running twice in React Strict Mode, which would
-  // consume the single-use token before the customer sees the result.
-  const confirmed = useRef(false)
+  const request = useRef<{ token: string; promise: ReturnType<typeof confirmEmailVerification> } | null>(null)
+  const [result, setResult] = useState<{ token: string; status: VerificationState } | null>(null)
+  const state: VerificationState = !token ? "error" : result?.token === token ? result.status : "verifying"
 
   useEffect(() => {
-    if (confirmed.current) {
-      return
+    let disposed = false
+    if (!token) return
+    if (request.current?.token !== token) {
+      request.current = { token, promise: confirmEmailVerification(token) }
     }
-    confirmed.current = true
-
-    if (!token) {
-      setState("error")
-      return
-    }
-
-    confirmEmailVerification(token).then(({ success }) =>
-      setState(success ? "success" : "error")
-    )
+    request.current.promise.then(({ success }) => {
+      if (!disposed) setResult({ token, status: success ? "success" : "error" })
+    }).catch(() => {
+      if (!disposed) setResult({ token, status: "error" })
+    })
+    return () => { disposed = true }
   }, [token])
 
   return (

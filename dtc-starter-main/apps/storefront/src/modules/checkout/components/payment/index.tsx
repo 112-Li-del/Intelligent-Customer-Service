@@ -17,7 +17,7 @@ import {
 } from "@modules/common/components/ui"
 import { HttpTypes } from "@medusajs/types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 
 const Payment = ({
   cart,
@@ -106,9 +106,11 @@ const Payment = ({
     }
   }
 
-  useEffect(() => {
+  const [previousOpen, setPreviousOpen] = useState(isOpen)
+  if (previousOpen !== isOpen) {
+    setPreviousOpen(isOpen)
     setError(null)
-  }, [isOpen])
+  }
 
   return (
     <div className="bg-white">

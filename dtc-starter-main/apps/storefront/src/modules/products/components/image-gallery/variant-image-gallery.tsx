@@ -2,7 +2,7 @@
 
 import { HttpTypes } from "@medusajs/types"
 import { useSearchParams } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 import ImageGallery from "."
 
 const getImagesForVariant = (
@@ -32,11 +32,7 @@ const VariantImageGallery = ({
   product: HttpTypes.StoreProduct
 }) => {
   const searchParams = useSearchParams()
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => setIsMounted(true), [])
-
-  const variantId = isMounted ? searchParams.get("v_id") ?? undefined : undefined
+  const variantId = searchParams.get("v_id") ?? undefined
   const images = useMemo(
     () => getImagesForVariant(product, variantId) ?? [],
     [product, variantId]

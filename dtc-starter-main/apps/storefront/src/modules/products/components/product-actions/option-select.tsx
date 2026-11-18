@@ -25,7 +25,9 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
 
   return (
     <fieldset className="flex flex-col gap-y-3" disabled={disabled}>
-      <legend className="text-sm mb-3">选择 {title}</legend>
+      <legend className="mb-3 text-xs font-semibold text-gray-600">
+        选择{title}
+      </legend>
       <div
         className="flex flex-wrap justify-between gap-2"
         data-testid={dataTestId}
@@ -46,11 +48,11 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
               <label
                 htmlFor={id}
                 className={clx(
-                  "flex items-center justify-center cursor-pointer border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-1 peer-disabled:cursor-not-allowed",
+                  "flex h-10 cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white p-2 text-xs font-medium text-brand-ink transition-all peer-focus-visible:ring-2 peer-focus-visible:ring-brand-orange peer-focus-visible:ring-offset-1 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
                   {
-                    "border-ui-border-interactive": v === current,
-                    "hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150":
-                      v !== current,
+                    "border-[#E77600] bg-[#FFF8EE] shadow-[0_0_0_1px_#E77600]":
+                      v === current,
+                    "hover:border-gray-500 hover:bg-gray-50": v !== current,
                   }
                 )}
                 data-testid="option-button"

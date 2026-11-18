@@ -20,6 +20,19 @@ module.exports = {
         padding: "padding-top padding-right padding-bottom padding-left",
       },
       colors: {
+        brand: {
+          navy: "#131921",
+          "navy-light": "#232F3E",
+          slate: "#37475A",
+          orange: "#FEBD69",
+          "orange-hover": "#F3A847",
+          yellow: "#FFD814",
+          "yellow-hover": "#F7CA00",
+          action: "#FFA41C",
+          "action-hover": "#FA8900",
+          canvas: "#EAEDED",
+          ink: "#0F1111",
+        },
         grey: {
           0: "#FFFFFF",
           5: "#F9FAFB",
@@ -41,6 +54,11 @@ module.exports = {
         rounded: "8px",
         large: "16px",
         circle: "9999px",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgba(15, 17, 17, 0.08)",
+        "card-hover": "0 8px 24px rgba(15, 17, 17, 0.12)",
+        chat: "0 20px 60px rgba(15, 17, 17, 0.22)",
       },
       maxWidth: {
         "8xl": "100rem",
@@ -70,6 +88,14 @@ module.exports = {
         ],
       },
       keyframes: {
+        "soft-pulse": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.55", transform: "scale(1.35)" },
+        },
+        "slide-up": {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
         ring: {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
@@ -141,6 +167,8 @@ module.exports = {
         },
       },
       animation: {
+        "soft-pulse": "soft-pulse 2.4s ease-in-out infinite",
+        "slide-up": "slide-up 240ms ease-out both",
         ring: "ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite",
         "fade-in-right":
           "fade-in-right 0.3s cubic-bezier(0.5, 0, 0.5, 1) forwards",

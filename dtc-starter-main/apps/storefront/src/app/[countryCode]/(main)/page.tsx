@@ -20,7 +20,7 @@ export async function generateMetadata(props: {
   return {
     title: "知选商城",
     description:
-      "浏览商品、了解规格并选购。",
+      "知选商城精选真实商品，提供清晰规格、便捷选购与 AI 智能导购体验。",
     alternates: {
       canonical: `${origin}/${countryCode}`,
       languages: {
@@ -84,11 +84,7 @@ export default async function Home(props: {
         dangerouslySetInnerHTML={{ __html: toJsonLd(structuredData) }}
       />
       <Hero />
-      <div className="py-12">
-        <ul className="flex flex-col gap-x-6">
-          <FeaturedProducts collections={collections} region={region} />
-        </ul>
-      </div>
+      <FeaturedProducts collections={collections} region={region} />
     </>
   )
 }

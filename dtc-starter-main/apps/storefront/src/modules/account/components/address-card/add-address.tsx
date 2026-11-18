@@ -2,7 +2,7 @@
 
 import { Plus } from "@medusajs/icons"
 import { Button, Heading } from "@modules/common/components/ui"
-import { useActionState, useEffect, useState } from "react"
+import { useActionState } from "react"
 
 import { addCustomerAddress } from "@lib/data/customer"
 import useToggleState from "@lib/hooks/use-toggle-state"
@@ -18,31 +18,17 @@ const AddAddress = ({
   region: HttpTypes.StoreRegion
   addresses: HttpTypes.StoreCustomerAddress[]
 }) => {
-  const [successState, setSuccessState] = useState(false)
-  const { state, open, close: closeModal } = useToggleState(false)
+  const { state, open, close } = useToggleState(false)
 
-  const [formState, formAction] = useActionState(addCustomerAddress, {
+  const [formState, formAction] = useActionState(async (previous: { success: boolean; error: string | null }, formData: FormData) => {
+    const result = await addCustomerAddress(previous, formData)
+    if (result.success) close()
+    return result
+  }, {
     success: false,
     error: null,
   } as { success: boolean; error: string | null })
 
-  const close = () => {
-    setSuccessState(false)
-    closeModal()
-  }
-
-  useEffect(() => {
-    if (successState) {
-      close()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [successState])
-
-  useEffect(() => {
-    if (formState.success) {
-      setSuccessState(true)
-    }
-  }, [formState])
 
   return (
     <>

@@ -1,7 +1,7 @@
 "use client"
 
 import { displayCountry } from "@lib/util/address-display"
-import React, { useActionState, useEffect, useMemo } from "react"
+import React, { useActionState, useMemo } from "react"
 
 import Input from "@modules/common/components/input"
 import NativeSelect from "@modules/common/components/native-select"
@@ -32,7 +32,6 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
     )
   }, [regions])
 
-  const [successState, setSuccessState] = React.useState(false)
 
   const billingAddress = customer.addresses?.find(
     (addr) => addr.is_default_billing
@@ -54,13 +53,9 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
     initialState
   )
 
-  const clearState = () => {
-    setSuccessState(false)
-  }
-
-  useEffect(() => {
-    setSuccessState(!!state.success)
-  }, [state])
+  const [dismissedState, setDismissedState] = React.useState<typeof state | null>(null)
+  const successState = !!state.success && dismissedState !== state
+  const clearState = () => setDismissedState(state)
 
   const currentInfo = useMemo(() => {
     if (!billingAddress) {

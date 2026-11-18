@@ -13,7 +13,7 @@ import Input from "@modules/common/components/input"
 import Modal from "@modules/common/components/modal"
 import { Button, Heading, Text, clx } from "@modules/common/components/ui"
 import Spinner from "@modules/common/icons/spinner"
-import React, { useActionState, useEffect, useState } from "react"
+import React, { useActionState, useState } from "react"
 
 type EditAddressProps = {
   region: HttpTypes.StoreRegion
@@ -27,31 +27,17 @@ const EditAddress: React.FC<EditAddressProps> = ({
   isActive = false,
 }) => {
   const [removing, setRemoving] = useState(false)
-  const [successState, setSuccessState] = useState(false)
-  const { state, open, close: closeModal } = useToggleState(false)
+  const { state, open, close } = useToggleState(false)
 
-  const [formState, formAction] = useActionState(updateCustomerAddress, {
+  const [formState, formAction] = useActionState(async (previous: { success: boolean; error: string | null }, formData: FormData) => {
+    const result = await updateCustomerAddress(previous, formData)
+    if (result.success) close()
+    return result
+  }, {
     success: false,
     error: null,
   } as { success: boolean; error: string | null })
 
-  const close = () => {
-    setSuccessState(false)
-    closeModal()
-  }
-
-  useEffect(() => {
-    if (successState) {
-      close()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [successState])
-
-  useEffect(() => {
-    if (formState.success) {
-      setSuccessState(true)
-    }
-  }, [formState])
 
   const removeAddress = async () => {
     setRemoving(true)

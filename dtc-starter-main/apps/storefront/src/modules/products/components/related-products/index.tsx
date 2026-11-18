@@ -47,23 +47,31 @@ export default async function RelatedProducts({
   }
 
   return (
-    <div className="product-page-constraint">
-      <div className="flex flex-col items-center text-center mb-16">
-        <span className="text-base-regular text-gray-600 mb-6">
-          相关商品
-        </span>
-        <p className="text-2xl-regular text-ui-fg-base max-w-lg">
-          看看其他商品。
-        </p>
+    <section
+      className="product-page-constraint"
+      aria-labelledby="related-products-title"
+    >
+      <div className="mb-6 flex items-end justify-between border-b border-gray-200 pb-4">
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#B12704]">
+            继续逛逛
+          </span>
+          <h2
+            id="related-products-title"
+            className="mt-1 text-2xl font-bold text-brand-ink"
+          >
+            相关商品推荐
+          </h2>
+        </div>
       </div>
 
-      <ul className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-5 small:grid-cols-3 small:gap-x-5 medium:grid-cols-4">
         {products.map((product) => (
           <li key={product.id}>
             <Product region={region} product={product} />
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   )
 }
