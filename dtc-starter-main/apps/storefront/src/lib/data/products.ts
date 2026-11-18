@@ -19,11 +19,13 @@ export const listProducts = async ({
   queryParams,
   countryCode,
   regionId,
+  fresh = false,
 }: {
   pageParam?: number
   queryParams?: ProductListQueryParams
   countryCode?: string
   regionId?: string
+  fresh?: boolean
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -75,8 +77,8 @@ export const listProducts = async ({
           ...queryParams,
         },
         headers,
-        next,
-        cache: "force-cache",
+        next: fresh ? undefined : next,
+        cache: fresh ? "no-store" : "force-cache",
       }
     )
     .then(({ products, count }) => {

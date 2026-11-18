@@ -1,3 +1,4 @@
+import { listProducts } from "@lib/data/products"
 import repeat from "@lib/util/repeat"
 import { HttpTypes } from "@medusajs/types"
 import { Heading, Table } from "@modules/common/components/ui"
@@ -9,8 +10,33 @@ type ItemsTemplateProps = {
   cart?: HttpTypes.StoreCart
 }
 
-const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
+const ItemsTemplate = async ({ cart }: ItemsTemplateProps) => {
   const items = cart?.items
+  // Cart lines don't include available stock. Fetch it once for the tracked variants.
+  const trackedItems = items?.filter(({ variant, product_id }) =>
+    product_id && variant?.manage_inventory && !variant.allow_backorder
+  ) ?? []
+  const productIds = Array.from(new Set(trackedItems.flatMap(
+    ({ product_id }) => product_id ? [product_id] : []
+  )))
+  const catalog = productIds.length && cart?.region_id
+    ? await listProducts({
+        regionId: cart.region_id,
+        queryParams: {
+          id: productIds,
+          limit: productIds.length,
+          sales_channel_id: cart.sales_channel_id ?? undefined,
+          fields: "id,variants.id,variants.manage_inventory,+variants.inventory_quantity",
+        },
+        fresh: true,
+      }).catch(() => null)
+    : null
+  const stockByVariant = new Map(
+    (catalog?.response.products ?? []).flatMap((product) =>
+      (product.variants ?? []).map((variant) => [variant.id, variant.inventory_quantity] as const)
+    )
+  )
+
   return (
     <div>
       <div className="pb-3 flex items-center">
@@ -42,6 +68,7 @@ const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
                       key={item.id}
                       item={item}
                       currencyCode={cart?.currency_code}
+                      maxQuantity={stockByVariant.get(item.variant_id ?? "") ?? undefined}
                     />
                   )
                 })
