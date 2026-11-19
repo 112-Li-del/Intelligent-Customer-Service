@@ -5,11 +5,14 @@ import AiChatTrigger from "@modules/ai-chat/components/ai-chat-trigger"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { useEffect, useState } from "react"
+import styles from "./carousel.module.css"
+
+const ROTATION_INTERVAL = 3000
 
 const slides = [
   {
-    eyebrow: "知选商城 · 超级品牌日",
-    title: "好物不必海选，\n知选帮你精准挑",
+    eyebrow: "来财商城 · 超级品牌日",
+    title: "好物不必海选，\n来财帮你精准挑",
     description: "从日常穿搭配货到生活好物，真实商品、清晰价格，一站轻松选购。",
     cta: "立即逛好物",
     href: "/store",
@@ -27,7 +30,7 @@ const slides = [
       "linear-gradient(115deg, #3B2C20 0%, #8B5E34 52%, #C48B4A 100%)",
   },
   {
-    eyebrow: "知选 AI · 你的专属选品助手",
+    eyebrow: "来财 AI · 你的专属选品助手",
     title: "说出你的需求，\n让选择更简单",
     description:
       "从使用场景、预算到尺码偏好，AI 导购帮你梳理需求，更快找到合适的商品。",
@@ -45,45 +48,30 @@ type HeroProduct = {
   price?: string
 }
 
-const Hero = ({ products }: { products: HeroProduct[] }) => {
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
-  const slide = slides[activeIndex]
-  const product = products.length ? products[activeIndex % products.length] : undefined
+type Direction = 1 | -1
+type CarouselState = {
+  activeIndex: number
+  previousIndex?: number
+  direction: Direction
+}
 
-  useEffect(() => {
-    if (
-      isPaused ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return
-    }
-
-    const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % slides.length)
-    }, 6000)
-
-    return () => window.clearInterval(timer)
-  }, [isPaused])
-
-  const showPrevious = () => {
-    setActiveIndex((current) => (current - 1 + slides.length) % slides.length)
-  }
-
-  const showNext = () => {
-    setActiveIndex((current) => (current + 1) % slides.length)
-  }
-
+const HeroSlide = ({
+  slide,
+  product,
+  className,
+  isLeaving,
+}: {
+  slide: (typeof slides)[number]
+  product?: HeroProduct
+  className: string
+  isLeaving?: boolean
+}) => {
   return (
-    <section
-      className="relative h-[540px] overflow-hidden text-white small:h-[460px]"
+    <div
+      className={`absolute inset-0 ${className}`}
       style={{ background: slide.background }}
-      aria-roledescription="轮播图"
-      aria-label="知选商城精选活动"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onFocusCapture={() => setIsPaused(true)}
-      onBlurCapture={() => setIsPaused(false)}
+      aria-hidden={isLeaving}
+      inert={isLeaving}
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-30"
@@ -95,10 +83,7 @@ const Hero = ({ products }: { products: HeroProduct[] }) => {
       </div>
 
       <div className="content-container relative flex h-full flex-col justify-center gap-4 pb-28 pt-4 small:flex-row small:items-center small:justify-between small:gap-8 small:pb-32">
-        <div
-          key={activeIndex}
-          className="relative z-10 max-w-2xl animate-slide-up"
-        >
+        <div className="relative z-10 max-w-2xl">
           <p className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-orange small:text-sm">
             <span className="h-px w-8 bg-brand-orange" />
             {slide.eyebrow}
@@ -152,10 +137,83 @@ const Hero = ({ products }: { products: HeroProduct[] }) => {
           </LocalizedClientLink>
         )}
       </div>
+    </div>
+  )
+}
+
+const stepCarousel = (current: CarouselState, direction: Direction): CarouselState => ({
+  activeIndex: (current.activeIndex + direction + slides.length) % slides.length,
+  previousIndex: current.activeIndex,
+  direction,
+})
+
+const Hero = ({ products }: { products: HeroProduct[] }) => {
+  const [{ activeIndex, previousIndex, direction }, setCarousel] = useState<CarouselState>({
+    activeIndex: 0,
+    direction: 1,
+  })
+  const [isHovered, setIsHovered] = useState(false)
+  const [hasFocus, setHasFocus] = useState(false)
+
+  useEffect(() => {
+    if (isHovered || hasFocus) return
+
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    let timer: number | undefined
+    const schedule = () => {
+      window.clearTimeout(timer)
+      if (!motion.matches) {
+        timer = window.setTimeout(() => {
+          setCarousel((current) => stepCarousel(current, 1))
+        }, ROTATION_INTERVAL)
+      }
+    }
+
+    schedule()
+    motion.addEventListener("change", schedule)
+    return () => {
+      window.clearTimeout(timer)
+      motion.removeEventListener("change", schedule)
+    }
+  }, [activeIndex, isHovered, hasFocus])
+
+  const getProduct = (index: number) =>
+    products.length ? products[index % products.length] : undefined
+  const reverse = direction === -1 ? styles.reverse : ""
+
+  return (
+    <section
+      className="relative isolate h-[540px] overflow-hidden bg-brand-navy text-white small:h-[460px]"
+      aria-roledescription="轮播图"
+      aria-label="来财商城精选活动"
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") setIsHovered(true)
+      }}
+      onPointerLeave={() => setIsHovered(false)}
+      onFocusCapture={() => setHasFocus(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setHasFocus(false)
+      }}
+    >
+      {previousIndex !== undefined && (
+        <HeroSlide
+          key={`leaving-${previousIndex}`}
+          slide={slides[previousIndex]}
+          product={getProduct(previousIndex)}
+          className={`${styles.leaving} ${reverse}`}
+          isLeaving
+        />
+      )}
+      <HeroSlide
+        key={`active-${activeIndex}`}
+        slide={slides[activeIndex]}
+        product={getProduct(activeIndex)}
+        className={previousIndex === undefined ? "" : `${styles.entering} ${reverse}`}
+      />
 
       <button
         type="button"
-        onClick={showPrevious}
+        onClick={() => setCarousel((current) => stepCarousel(current, -1))}
         aria-label="上一张活动横幅"
         className="absolute bottom-[100px] left-[calc(50%-76px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
       >
@@ -163,7 +221,7 @@ const Hero = ({ products }: { products: HeroProduct[] }) => {
       </button>
       <button
         type="button"
-        onClick={showNext}
+        onClick={() => setCarousel((current) => stepCarousel(current, 1))}
         aria-label="下一张活动横幅"
         className="absolute bottom-[100px] right-[calc(50%-76px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
       >
@@ -177,7 +235,15 @@ const Hero = ({ products }: { products: HeroProduct[] }) => {
             type="button"
             aria-label={`切换到第 ${index + 1} 张活动横幅`}
             aria-current={index === activeIndex ? "true" : undefined}
-            onClick={() => setActiveIndex(index)}
+            onClick={() => setCarousel((current) => (
+              index === current.activeIndex
+                ? current
+                : {
+                    activeIndex: index,
+                    previousIndex: current.activeIndex,
+                    direction: index > current.activeIndex ? 1 : -1,
+                  }
+            ))}
             className={`h-1.5 rounded-full transition-all ${
               index === activeIndex
                 ? "w-8 bg-brand-orange"

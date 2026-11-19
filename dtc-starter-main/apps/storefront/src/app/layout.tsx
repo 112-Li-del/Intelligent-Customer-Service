@@ -1,3 +1,4 @@
+import { STORE_NAME } from "@lib/util/brand"
 import { getBaseURL } from "@lib/util/env"
 import { Metadata } from "next"
 import "styles/globals.css"
@@ -5,6 +6,8 @@ import NavigationScroll from "@modules/layout/components/navigation-scroll"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
+  applicationName: STORE_NAME,
+  title: { default: STORE_NAME, template: `%s | ${STORE_NAME}` },
 }
 
 export default function RootLayout(props: { children: React.ReactNode }) {
@@ -15,7 +18,9 @@ export default function RootLayout(props: { children: React.ReactNode }) {
       </head>
       <body>
         <NavigationScroll />
-        <main className="relative">{props.children}</main>
+        <main id="top" tabIndex={-1} className="relative focus:outline-none">
+          {props.children}
+        </main>
       </body>
     </html>
   )

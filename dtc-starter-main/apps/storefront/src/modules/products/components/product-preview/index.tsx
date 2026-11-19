@@ -31,7 +31,7 @@ export default function ProductPreview({
     ? "限时优惠"
     : isFeatured || product.tags?.some(({ value }) => /^(bestseller|热销)$/i.test(value))
     ? "热销"
-    : "AI 严选"
+    : "来财精选"
 
   return (
     <ProductCard

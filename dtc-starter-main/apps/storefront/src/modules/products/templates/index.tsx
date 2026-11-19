@@ -2,9 +2,12 @@ import React, { Suspense } from "react"
 import { getPreviewProductDetails } from "@lib/util/preview-product-details"
 
 import { HttpTypes } from "@medusajs/types"
+import { ChevronRight } from "@medusajs/icons"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ImageGallery from "@modules/products/components/image-gallery"
 import VariantImageGallery from "@modules/products/components/image-gallery/variant-image-gallery"
 import ProductActions from "@modules/products/components/product-actions"
+import ProductBreadcrumbBack from "@modules/products/components/product-breadcrumb-back"
 import ProductOnboardingCta from "@modules/products/components/product-onboarding-cta"
 import ProductTabs from "@modules/products/components/product-tabs"
 import RelatedProducts from "@modules/products/components/related-products"
@@ -28,11 +31,44 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   }
 
   const { reviews } = getPreviewProductDetails(product.metadata)
+  const category = product.categories?.find((entry) =>
+    entry.handle && entry.name &&
+    !("is_active" in entry && entry.is_active === false) &&
+    !("is_internal" in entry && entry.is_internal === true)
+  )
+  const breadcrumbs = [
+    { title: "商城首页", href: "/" },
+    { title: "全部商品", href: "/store" },
+    ...(category ? [{
+      title: category.name,
+      href: `/categories/${category.handle.split("/").map(encodeURIComponent).join("/")}`,
+    }] : []),
+  ]
 
   return (
     <>
+      <nav
+        aria-label="商品面包屑"
+        className="content-container flex flex-col items-start gap-y-1 pb-3 pt-2 text-xs leading-5 text-gray-600 xsmall:flex-row xsmall:items-center xsmall:gap-x-3 small:text-[13px]"
+      >
+        <ProductBreadcrumbBack countryCode={countryCode} />
+        <span aria-hidden="true" className="hidden h-3.5 w-px shrink-0 bg-gray-300 xsmall:block" />
+        <ol className="flex max-w-full min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+          {breadcrumbs.map(({ title, href }) => (
+            <li key={href} className="inline-flex max-w-full min-w-0 items-center gap-1.5">
+              <LocalizedClientLink href={href} className="min-w-0 truncate rounded-sm hover:text-[#C7511F] hover:underline">
+                {title}
+              </LocalizedClientLink>
+              <ChevronRight aria-hidden="true" className="h-3 w-3 shrink-0 text-gray-400" />
+            </li>
+          ))}
+          <li aria-current="page" className="min-w-0 max-w-[min(100%,200px)] truncate text-gray-500 small:max-w-xs" title={product.title}>
+            {product.title}
+          </li>
+        </ol>
+      </nav>
       <div
-        className="content-container grid grid-cols-1 gap-5 py-6 small:grid-cols-2 medium:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_300px] xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_330px]"
+        className="content-container grid grid-cols-1 gap-5 pb-6 small:grid-cols-2 medium:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_300px] xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_330px]"
         data-testid="product-container"
       >
         <div className="min-w-0 medium:sticky medium:top-32 medium:self-start">

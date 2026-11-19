@@ -134,7 +134,7 @@ const DiscoveryCards = ({ products, newestProducts, collections }: DiscoveryCard
               AI SELECT
             </span>
           </div>
-          <h2 className="relative mt-5 text-xl font-bold">知选 AI 选品助手</h2>
+          <h2 className="relative mt-5 text-xl font-bold">来财 AI 选品助手</h2>
           <p className="relative mt-2 text-sm leading-6 text-gray-300">
             不确定该买什么？告诉 AI 你的场景、预算和偏好。
           </p>

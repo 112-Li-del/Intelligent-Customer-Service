@@ -31,6 +31,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const product = await listProducts({
     countryCode: params.countryCode,
     queryParams: { handle },
+    includeCategories: true,
   }).then(({ response }) => response.products[0])
 
   if (!product) {
@@ -43,7 +44,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const description = product.description || product.title
 
   return {
-    title: `${product.title} | ${STORE_NAME}`,
+    title: product.title,
     description,
     alternates: {
       canonical: productUrl,
@@ -109,6 +110,7 @@ export default async function ProductPage(props: Props) {
   const pricedProduct = await listProducts({
     countryCode: params.countryCode,
     queryParams: { handle: params.handle },
+    includeCategories: true,
   }).then(({ response }) => response.products[0])
 
   if (!pricedProduct) {

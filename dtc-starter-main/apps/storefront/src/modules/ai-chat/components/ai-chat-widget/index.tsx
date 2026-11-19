@@ -35,7 +35,7 @@ type ChatMessage = {
 }
 
 const WELCOME_MESSAGE =
-  "你好，我是知选 AI 导购。你可以告诉我使用场景、预算、尺码或风格偏好，我会帮你理清选购思路。"
+  "你好，我是来财 AI 导购。你可以告诉我使用场景、预算、尺码或风格偏好，我会帮你理清选购思路。"
 
 const QUICK_PROMPTS = [
   "推荐一款日常百搭的卫衣",
@@ -113,12 +113,14 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [openedProduct, setOpenedProduct] = useState<AiChatProduct>()
+  const [isCatalogInquiry, setIsCatalogInquiry] = useState(false)
   const pageProduct = useSyncExternalStore(
     subscribeToAiChatPageProduct,
     getAiChatPageProduct,
     getServerAiChatPageProduct
   )
-  const productContext = pageProduct?.pathname === pathname ? pageProduct.product : openedProduct
+  const activeProduct = pageProduct?.pathname === pathname ? pageProduct.product : openedProduct
+  const productContext = isCatalogInquiry ? undefined : activeProduct
   const quickPrompts = productContext
     ? [
         "介绍这款商品",
@@ -183,9 +185,12 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
       if (detail.product) {
         setOpenedProduct(detail.product)
       }
+      if (detail.scope === "catalog" || detail.product) {
+        setIsCatalogInquiry(detail.scope === "catalog")
+      }
 
       if (detail.query) {
-        void sendQuery(detail.query, detail.product ?? productContext)
+        void sendQuery(detail.query, detail.scope === "catalog" ? undefined : detail.product ?? productContext)
       }
     }
 
@@ -231,7 +236,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
     <>
       <button
         type="button"
-        aria-label="打开知选 AI 智能客服"
+        aria-label="打开来财 AI 智能客服"
         onClick={() => setIsOpen(true)}
         className={clx(
           "fixed right-4 z-[70] flex h-14 w-14 items-center justify-center gap-2 rounded-full bg-brand-navy text-white shadow-chat transition-all hover:-translate-y-0.5 hover:bg-brand-navy-light small:right-6 small:h-12 small:w-auto small:rounded-full small:px-5",
@@ -243,7 +248,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
           <span className="absolute -right-1 -top-1 h-2.5 w-2.5 animate-soft-pulse rounded-full bg-brand-orange" />
         </span>
         <span className="hidden text-sm font-semibold small:inline">
-          知选 AI 客服
+          来财 AI 客服
         </span>
       </button>
 
@@ -266,7 +271,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
               </span>
               <div>
                 <h2 id="ai-chat-title" className="text-sm font-semibold">
-                  知选 AI 智能客服
+                  来财 AI 智能客服
                 </h2>
                 <p className="mt-0.5 text-xs text-gray-300">
                   {productContext ? "当前商品问答" : "演示模式"}
@@ -368,7 +373,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
             onSubmit={handleSubmit}
             className="border-t border-gray-200 bg-white p-3"
           >
-            <div className="flex items-end gap-2 rounded-xl border border-gray-300 bg-white p-2 focus-within:border-brand-orange focus-within:ring-1 focus-within:ring-brand-orange">
+            <div className="flex items-end gap-2 rounded-xl border border-gray-300 bg-white p-2">
               <label htmlFor="ai-chat-input" className="sr-only">
                 输入咨询内容
               </label>
@@ -380,7 +385,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
                 rows={1}
                 maxLength={500}
                 placeholder="输入你的问题，Enter 发送"
-                className="max-h-28 min-h-9 flex-1 resize-none border-0 px-2 py-1.5 text-sm leading-6 outline-none placeholder:text-gray-400 focus-visible:ring-0"
+                className="max-h-28 min-h-9 min-w-0 flex-1 resize-none rounded-md border-0 px-2 py-1.5 text-sm leading-6 placeholder:text-gray-400 focus-visible:ring-inset focus-visible:ring-offset-0"
               />
               <button
                 type="submit"

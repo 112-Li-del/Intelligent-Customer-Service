@@ -1,5 +1,7 @@
 import { Suspense } from "react"
+import Image from "next/image"
 
+import { BRAND_ICON_PATH, BRAND_NAME, BRAND_WORDMARK, STORE_NAME } from "@lib/util/brand"
 import AiChatTrigger from "@modules/ai-chat/components/ai-chat-trigger"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
@@ -10,50 +12,37 @@ import { MapPin, ShoppingCart, Sparkles, User } from "@medusajs/icons"
 const channelLinks = [
   { label: "商城首页", href: "/" },
   { label: "全部商品", href: "/store" },
-  { label: "精选好物", href: "/#popular-products" },
-  { label: "今日特惠", href: "/store" },
-  { label: "新品首发", href: "/#new-products" },
-  { label: "服饰鞋包", href: "/search?q=服饰" },
 ]
 
 const BrandLogo = () => (
   <LocalizedClientLink
     href="/"
-    className="group relative flex shrink-0 items-end gap-2 rounded-sm pb-1 text-white"
+    className="group inline-flex shrink-0 select-none items-center gap-2 rounded-sm text-white small:gap-2.5"
     data-testid="nav-store-link"
-    aria-label="知选商城首页"
+    aria-label={`${STORE_NAME}首页`}
   >
-    <span className="text-2xl font-bold tracking-tight">知选</span>
-    <span className="mb-1 hidden text-xs font-medium tracking-[0.2em] text-gray-300 xsmall:inline">
-      ZHIXUAN
+    <Image
+      src={BRAND_ICON_PATH}
+      alt=""
+      width={32}
+      height={32}
+      className="h-8 w-8 shrink-0 transition-transform motion-safe:group-hover:scale-105"
+    />
+    <span className="relative flex flex-col pb-1.5">
+      <span className="text-xl font-extrabold leading-none tracking-wider">{BRAND_NAME}</span>
+      <span className="mt-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.2em] text-brand-orange">
+        {BRAND_WORDMARK}
+      </span>
+      <svg viewBox="0 0 52 7" aria-hidden="true" className="absolute bottom-0 left-0 h-1.5 w-full">
+        <path d="M2 2.5c12 5 31 5.4 47-1" fill="none" stroke="#FF9900" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
     </span>
-    <svg
-      viewBox="0 0 72 12"
-      className="absolute -bottom-1 left-0 h-3 w-[4.5rem] text-brand-orange"
-      aria-hidden="true"
-    >
-      <path
-        d="M2 2C20 13 50 13 69 2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M62 1L70 2L67 9"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   </LocalizedClientLink>
 )
 
 export default function Nav() {
   return (
-    <div id="top" className="sticky inset-x-0 top-0 z-50 shadow-md">
+    <div className="sticky inset-x-0 top-0 z-50 shadow-md">
       <header className="bg-brand-navy text-white">
         <nav
           className="content-container flex min-h-16 items-center gap-4 py-3 small:gap-6"

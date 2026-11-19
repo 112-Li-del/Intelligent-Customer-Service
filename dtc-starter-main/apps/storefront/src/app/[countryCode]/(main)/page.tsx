@@ -17,9 +17,8 @@ export async function generateMetadata(props: {
   const origin = await getSiteOrigin()
 
   return {
-    title: "知选商城",
-    description:
-      "知选商城精选真实商品，提供清晰规格、便捷选购与 AI 智能导购体验。",
+    title: { absolute: STORE_NAME },
+    description: `${STORE_NAME}精选真实商品，提供清晰规格、便捷选购与 AI 智能导购体验。`,
     alternates: {
       canonical: `${origin}/${countryCode}`,
       languages: {

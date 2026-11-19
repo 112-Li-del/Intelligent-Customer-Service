@@ -1,0 +1,39 @@
+.entering,
+.leaving {
+  --slide-offset: 100%;
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.entering {
+  animation-name: enter;
+}
+
+.leaving {
+  animation-name: leave;
+}
+
+.reverse {
+  --slide-offset: -100%;
+}
+
+@keyframes enter {
+  from { transform: translateX(var(--slide-offset)); }
+  to { transform: translateX(0); }
+}
+
+@keyframes leave {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-1 * var(--slide-offset))); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entering {
+    animation: none;
+  }
+
+  .leaving {
+    display: none;
+  }
+}

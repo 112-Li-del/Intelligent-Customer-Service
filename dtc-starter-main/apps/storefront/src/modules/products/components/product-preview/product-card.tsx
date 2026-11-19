@@ -41,7 +41,7 @@ export default function ProductCard({
             fit="contain"
             className="rounded-md border-0 bg-[#F7F8F8] shadow-none group-hover:shadow-none"
           />
-          <span className={`absolute left-1.5 top-1.5 rounded px-2 py-1 text-[10px] font-bold text-white ${badge === "AI 严选" ? "bg-brand-navy" : "bg-[#B12704]"}`}>
+          <span className={`absolute left-1.5 top-1.5 rounded px-2 py-1 text-[10px] font-bold text-white ${badge === "来财精选" ? "bg-brand-navy" : "bg-[#B12704]"}`}>
             {badge}
           </span>
         </div>

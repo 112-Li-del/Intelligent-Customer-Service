@@ -21,7 +21,7 @@ const Register = ({ setCurrentView }: Props) => {
       data-testid="register-page"
     >
       <h1 className="text-large-semi uppercase mb-6">
-        注册知选商城
+        注册来财商城
       </h1>
       <p className="text-center text-base-regular text-ui-fg-base mb-4">
         注册后可以保存收货地址并查看订单。
@@ -80,7 +80,7 @@ const Register = ({ setCurrentView }: Props) => {
           data-testid="register-error"
         />
         <span className="text-center text-ui-fg-base text-small-regular mt-6">
-          注册即表示你同意知选商城的{" "}
+          注册即表示你同意来财商城的{" "}
           <LocalizedClientLink
             href="/content/privacy-policy"
             className="underline"

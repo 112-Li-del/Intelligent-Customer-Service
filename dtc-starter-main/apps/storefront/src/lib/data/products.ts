@@ -20,12 +20,14 @@ export const listProducts = async ({
   countryCode,
   regionId,
   fresh = false,
+  includeCategories = false,
 }: {
   pageParam?: number
   queryParams?: ProductListQueryParams
   countryCode?: string
   regionId?: string
   fresh?: boolean
+  includeCategories?: boolean
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -72,8 +74,7 @@ export const listProducts = async ({
           limit,
           offset,
           region_id: region?.id,
-          fields:
-            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,*variants.options,+metadata,+tags,",
+          fields: `*variants.calculated_price,+variants.inventory_quantity,*variants.images,*variants.options,+metadata,+tags${includeCategories ? ",*categories" : ""}`,
           ...queryParams,
         },
         headers,

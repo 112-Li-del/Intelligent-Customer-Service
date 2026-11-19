@@ -1,7 +1,7 @@
 import "server-only"
 import { headers } from "next/headers"
 
-export const STORE_NAME = "知选商城"
+export { STORE_NAME } from "./brand"
 
 export const DEFAULT_COUNTRY_CODE = (
   process.env.NEXT_PUBLIC_DEFAULT_REGION || "cn"

@@ -8,6 +8,11 @@
     scroll-padding-top: 7.5rem;
   }
 
+  /* A live search can remove entire rows without moving the active search field. */
+  html:has([data-store-listing]) {
+    overflow-anchor: none;
+  }
+
   body {
     @apply bg-brand-canvas text-brand-ink antialiased;
   }
@@ -22,7 +27,7 @@
   input,
   textarea,
   select {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 focus-visible:ring-offset-white;
   }
 
   @media (prefers-reduced-motion: reduce) {

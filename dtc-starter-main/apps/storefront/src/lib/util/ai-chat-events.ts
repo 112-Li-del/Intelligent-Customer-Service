@@ -13,6 +13,7 @@ export type AiChatProduct = {
 export type AiChatOpenDetail = {
   query?: string
   product?: AiChatProduct
+  scope?: "catalog"
 }
 
 export const openAiChat = (detail: AiChatOpenDetail = {}) => {

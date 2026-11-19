@@ -37,7 +37,7 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
             </LocalizedClientLink>
           )}
           <span className="rounded-full bg-[#FFF3E0] px-2.5 py-1 text-xs font-semibold text-[#8A4B08]">
-            知选精选
+            来财精选
           </span>
         </div>
 

@@ -11,19 +11,13 @@ const sideMenuItems = [
     name: "商城首页",
     href: "/",
     testId: "home-link",
-    description: "返回知选商城首页",
+    description: "返回来财商城首页",
   },
   {
     name: "全部商品",
     href: "/store",
     testId: "store-link",
     description: "按分类、价格与规格筛选",
-  },
-  {
-    name: "搜索好物",
-    href: "/search",
-    testId: "search-link",
-    description: "输入关键词精准查找",
   },
   {
     name: "我的账户",
@@ -49,8 +43,7 @@ const SideMenu = () => {
             className="flex h-full shrink-0 items-center gap-2 rounded-sm px-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
           >
             <BarsThree className="h-5 w-5" />
-            <span className="hidden xsmall:inline">全部商品分类</span>
-            <span className="xsmall:hidden">分类</span>
+            <span>快捷导航</span>
           </Popover.Button>
 
           <Transition show={open} as={Fragment}>
@@ -83,7 +76,7 @@ const SideMenu = () => {
               <PopoverPanel className="fixed inset-y-0 left-0 z-[70] flex w-[min(88vw,380px)] flex-col bg-white text-brand-ink shadow-2xl">
                 <div className="flex items-center justify-between bg-brand-navy px-6 py-5 text-white">
                   <div>
-                    <p className="text-lg font-semibold">知选商城</p>
+                    <p className="text-lg font-semibold">来财商城</p>
                     <p className="mt-1 text-xs text-gray-300">
                       发现适合你的每一件好物
                     </p>
@@ -143,7 +136,7 @@ const SideMenu = () => {
                     </span>
                     <span>
                       <span className="block text-sm font-semibold">
-                        知选 AI 智能导购
+                        来财 AI 智能导购
                       </span>
                       <span className="mt-1 block text-xs text-gray-300">
                         说出需求，获取选品建议
@@ -154,7 +147,7 @@ const SideMenu = () => {
 
                 <div className="border-t border-gray-200 px-7 py-5 text-xs text-gray-500">
                   <p>配送至：中国大陆</p>
-                  <p className="mt-1">© {new Date().getFullYear()} 知选商城</p>
+                  <p className="mt-1">© {new Date().getFullYear()} 来财商城</p>
                 </div>
               </PopoverPanel>
             </Transition.Child>

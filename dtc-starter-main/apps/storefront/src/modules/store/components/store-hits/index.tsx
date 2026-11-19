@@ -10,6 +10,7 @@ import useSearchSettled from "@lib/hooks/use-search-settled"
 import { listProducts } from "@lib/data/products"
 import { Text } from "@modules/common/components/ui"
 import ProductPreview from "@modules/products/components/product-preview"
+import AskSearchAi from "@modules/search/components/ask-ai"
 import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
 import SearchPagination from "./pagination"
 import HitPrice, { HitPricing } from "./price"
@@ -102,12 +103,14 @@ const StoreHits = ({ hitsPerPage, currencyCode }: StoreHitsProps) => {
       {showSkeleton ? (
         <SkeletonProductGrid numberOfProducts={hitsPerPage} />
       ) : !items.length ? (
-        <Text
-          className="py-16 text-center text-ui-fg-subtle"
-          data-testid="no-products"
-        >
-          没有符合筛选条件的商品。
-        </Text>
+        <div className="py-16 text-center">
+          <Text className="text-ui-fg-subtle" data-testid="no-products">
+            {indexUiState.query
+              ? `当前筛选条件下未找到与「${indexUiState.query}」相关的商品。`
+              : "没有符合筛选条件的商品。"}
+          </Text>
+          {indexUiState.query && <AskSearchAi query={indexUiState.query} />}
+        </div>
       ) : (
         <ul
           className="grid w-full grid-cols-2 gap-3 xsmall:grid-cols-3 small:grid-cols-4 small:gap-4"

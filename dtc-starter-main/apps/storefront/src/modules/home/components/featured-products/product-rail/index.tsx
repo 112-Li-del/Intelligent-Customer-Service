@@ -59,7 +59,7 @@ export default function ProductRail({
           </LocalizedClientLink>
         </div>
 
-        <ul className={`flex snap-x snap-mandatory gap-4 overflow-x-auto p-4 small:p-6 ${horizontal ? "" : "no-scrollbar small:grid small:grid-cols-3 small:overflow-visible medium:grid-cols-4"}`}>
+        <ul className={`flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 p-4 small:scroll-px-6 small:p-6 ${horizontal ? "" : "no-scrollbar small:grid small:grid-cols-3 small:overflow-visible medium:grid-cols-4"}`}>
           {products.map((product) => (
             <li
               key={product.id}

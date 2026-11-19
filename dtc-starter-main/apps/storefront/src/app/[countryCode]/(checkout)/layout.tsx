@@ -1,6 +1,8 @@
+import { BRAND_ICON_PATH, STORE_NAME } from "@lib/util/brand"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import MedusaCTA from "@modules/layout/components/medusa-cta"
+import Image from "next/image"
 
 export default function CheckoutLayout({
   children,
@@ -26,10 +28,11 @@ export default function CheckoutLayout({
           </LocalizedClientLink>
           <LocalizedClientLink
             href="/"
-            className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
+            className="flex items-center gap-2 rounded-sm text-base font-bold text-brand-ink"
             data-testid="store-link"
           >
-            知选商城
+            <Image src={BRAND_ICON_PATH} alt="" width={28} height={28} />
+            {STORE_NAME}
           </LocalizedClientLink>
           <div className="flex-1 basis-0" />
         </nav>
