@@ -20,6 +20,13 @@ const categories = {
 
 const skuFor = (handle: string) => `ZX-${handle.toUpperCase()}`
 
+const huaweiVariants = [
+  { value: "12GB+256GB", sku: "ZX-HUAWEI-PURA-90-PRO-MAX-12-256", price: 6499 },
+  { value: "12GB+512GB", sku: "ZX-HUAWEI-PURA-90-PRO-MAX-12-512", price: 6999 },
+  { value: "16GB+512GB", sku: "ZX-HUAWEI-PURA-90-PRO-MAX-16-512", price: 7499 },
+  { value: "16GB+1TB", sku: "ZX-HUAWEI-PURA-90-PRO-MAX-16-1TB", price: 8499 },
+]
+
 export default async function seedCatalogPreview({ container }: Pick<ExecArgs, "container">) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -101,20 +108,39 @@ export default async function seedCatalogPreview({ container }: Pick<ExecArgs, "
           sales_channels: [{ id: store.default_sales_channel_id }],
           shipping_profile_id: shippingProfile.id,
           metadata: { preview_details: previewDetails },
-          options: [{ title: "款式", values: ["标准款"] }],
-          variants: [{
-            title: "标准款",
-            sku: skuFor(item.handle),
-            manage_inventory: true,
-            options: { 款式: "标准款" },
-            prices: [{ currency_code: "cny", amount: item.price }],
-          }],
+          options: item.handle === "huawei-pura-90-pro-max"
+            ? [{
+                title: "存储容量",
+                values: huaweiVariants.map(({ value }) => value),
+              }]
+            : [{ title: "款式", values: ["标准款"] }],
+          variants: item.handle === "huawei-pura-90-pro-max"
+            ? huaweiVariants.map(({ value, sku, price }) => ({
+                title: value,
+                sku,
+                manage_inventory: true,
+                options: { 存储容量: value },
+                prices: [{ currency_code: "cny", amount: price }],
+              }))
+            : [{
+                title: "标准款",
+                sku: skuFor(item.handle),
+                manage_inventory: true,
+                options: { 款式: "标准款" },
+                prices: [{ currency_code: "cny", amount: item.price }],
+              }],
         }],
       },
     })
   }
 
-  const previewSkus = catalog.filter((item) => item.category).map(({ handle }) => skuFor(handle))
+  const previewSkus = catalog
+    .filter((item) => item.category)
+    .flatMap(({ handle }) =>
+      handle === "huawei-pura-90-pro-max"
+        ? huaweiVariants.map(({ sku }) => sku)
+        : [skuFor(handle)]
+    )
   const { data: inventoryItems } = await query.graph({
     entity: "inventory_item",
     fields: ["id", "location_levels.location_id"],
