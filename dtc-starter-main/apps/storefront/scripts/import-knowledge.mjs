@@ -1,0 +1,285 @@
+import { createHash } from "node:crypto"
+import { readFileSync, readdirSync } from "node:fs"
+import pg from "pg"
+
+const knowledge = new URL("../../../knowledge-base/", import.meta.url)
+const segmenter = new Intl.Segmenter("zh-CN", { granularity: "word" })
+const textOnly = process.argv.includes("--text-only")
+const hash = (text) => createHash("sha256").update(text).digest("hex")
+
+function keywordText(content) {
+  const tokens = new Set()
+  for (const { segment, isWordLike } of segmenter.segment(content.normalize("NFKC").toLowerCase())) {
+    if (isWordLike) tokens.add(segment)
+  }
+  for (const [phrase] of content.matchAll(/\p{Script=Han}+/gu)) {
+    const chars = Array.from(phrase)
+    for (let index = 0; index + 1 < chars.length; index++) {
+      tokens.add(chars[index] + chars[index + 1])
+    }
+  }
+  return [content, ...tokens].join(" ")
+}
+
+function readDocuments() {
+  const documents = []
+  for (const kind of ["products", "policies"]) {
+    const folder = new URL(`${kind}/`, knowledge)
+    for (const name of readdirSync(folder).sort()) {
+      if (!name.endsWith(".md")) continue
+      const file = `${kind}/${name}`
+      const raw = readFileSync(new URL(name, folder), "utf8").replace(/\r\n/g, "\n")
+      const header = raw.match(/^---\n([^]*?)\n---\n/)
+      if (!header) throw new Error(`Missing metadata in ${file}`)
+      const metadata = Object.fromEntries(header[1].split("\n").filter(Boolean).map((line) => {
+        const [, key, value] = line.match(/^([a-z_]+):\s*(.+)$/) ?? []
+        if (!key) throw new Error(`Invalid metadata in ${file}`)
+        return [key, JSON.parse(value)]
+      }))
+      if (metadata.status !== "approved") continue
+      const markdown = raw.slice(header[0].length).replace(/^<!--.*-->\s*$/gm, "")
+      const title = markdown.match(/^# (.+)$/m)?.[1]
+      const sections = Array.from(markdown.matchAll(/^## (.+)\n([^]*?)(?=^## |(?![^]))/gm))
+      if (!title || !metadata.locale || !metadata.region_code || !sections.length) {
+        throw new Error(`Incomplete approved document: ${file}`)
+      }
+      if (kind === "products" && metadata.product_handle !== name.slice(0, -3)) {
+        throw new Error(`Product handle does not match ${file}`)
+      }
+      documents.push({ file, title, metadata, sections })
+    }
+  }
+  if (!documents.length) throw new Error("No approved knowledge documents found")
+  return documents
+}
+
+async function resolveProductIds(documents) {
+  const baseUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL?.trim() || "http://localhost:9000"
+  const key = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY?.trim()
+  if (!key) throw new Error("Medusa publishable API key is required")
+  const results = new Map()
+  for (const { metadata } of documents) {
+    const handle = metadata.product_handle
+    if (!handle || results.has(handle)) continue
+    const url = new URL(`${baseUrl.replace(/\/+$/, "")}/store/products`)
+    url.search = new URLSearchParams({ handle, fields: "id,handle", limit: "1" })
+    const response = await fetch(url, {
+      headers: { "x-publishable-api-key": key },
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!response.ok) throw new Error(`Medusa catalog lookup failed (HTTP ${response.status})`)
+    const { products } = await response.json()
+    const product = products?.find((item) => item.handle === handle)
+    if (!product?.id) throw new Error(`Unavailable Medusa product: ${handle}`)
+    results.set(handle, product.id)
+  }
+  return results
+}
+
+function buildChunks(documents, ids) {
+  return documents.flatMap(({ file, title, metadata, sections }) => sections.flatMap(([, heading, body]) => {
+    const cleaned = body.trim()
+    if (!cleaned) return []
+    const sizeGuide = heading.startsWith("成衣平铺参考尺寸")
+    const table = sizeGuide
+      ? cleaned.match(/^(\|[^\n]+)\n(\|[^\n]+)\n((?:\|[^\n]+\n?)+)\s*([^]*)$/)
+      : null
+    if (sizeGuide && !table) throw new Error(`Invalid size table in ${file}`)
+    const entries = table
+      ? table[3].trimEnd().split("\n").map((line) => {
+        const size = line.split("|")[1].trim()
+        return { size, text: [table[1], table[2], line, table[4].trim()].filter(Boolean).join("\n") }
+      })
+      : [{ size: null, text: cleaned }]
+
+    return entries.map(({ size, text }) => {
+      const content = [title, size ? `${heading} · ${size} 码` : heading, text].join("\n\n")
+      return {
+        id: hash(JSON.stringify([file, heading, size])),
+        file, title, heading, size, content,
+        hash: hash(content),
+        keywords: keywordText(content),
+        productId: ids.get(metadata.product_handle) ?? null,
+        handle: metadata.product_handle ?? null,
+        categories: metadata.categories ?? [],
+        region: metadata.region_code,
+        locale: metadata.locale,
+        source: metadata.sources ?? [metadata.source],
+        updatedAt: metadata.updated_at || null,
+      }
+    })
+  }))
+}
+
+async function importText(client, chunks) {
+  await client.query("begin")
+  try {
+    await client.query("select pg_advisory_xact_lock(hashtext('laicai_knowledge_import'))")
+    await client.query(`
+      create schema if not exists laicai_knowledge;
+      create table if not exists laicai_knowledge.chunks (
+        id text primary key,
+        document_path text not null,
+        title text not null,
+        section text not null,
+        size text,
+        content text not null,
+        content_hash text not null,
+        keyword_text text not null,
+        search_terms tsvector generated always as (to_tsvector('simple'::regconfig, keyword_text)) stored,
+        product_id text,
+        product_handle text,
+        categories text[] not null,
+        region_code text not null,
+        locale text not null,
+        source_paths text[] not null,
+        source_updated_at timestamptz,
+        embedding real[],
+        embedding_provider text,
+        embedding_model text,
+        embedding_dimensions integer generated always as (cardinality(embedding)) stored,
+        constraint chunk_embedding_identity check (
+          (embedding is null and embedding_provider is null and embedding_model is null) or
+          (embedding is not null and cardinality(embedding) > 0 and embedding_provider is not null and embedding_model is not null)
+        )
+      );
+      create index if not exists knowledge_search_terms on laicai_knowledge.chunks using gin (search_terms);
+      create index if not exists knowledge_product_region on laicai_knowledge.chunks (product_id, region_code);
+      create index if not exists knowledge_document_path on laicai_knowledge.chunks (document_path);
+    `)
+    for (const chunk of chunks) {
+      await client.query(`
+        insert into laicai_knowledge.chunks as existing
+          (id, document_path, title, section, size, content, content_hash, keyword_text, product_id, product_handle,
+           categories, region_code, locale, source_paths, source_updated_at)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        on conflict (id) do update set
+          title = excluded.title, content = excluded.content, content_hash = excluded.content_hash,
+          keyword_text = excluded.keyword_text, product_id = excluded.product_id, product_handle = excluded.product_handle,
+          categories = excluded.categories, region_code = excluded.region_code, locale = excluded.locale,
+          source_paths = excluded.source_paths, source_updated_at = excluded.source_updated_at,
+          embedding = case when existing.content_hash = excluded.content_hash then existing.embedding end,
+          embedding_provider = case when existing.content_hash = excluded.content_hash then existing.embedding_provider end,
+          embedding_model = case when existing.content_hash = excluded.content_hash then existing.embedding_model end
+      `, [chunk.id, chunk.file, chunk.title, chunk.heading, chunk.size, chunk.content, chunk.hash, chunk.keywords,
+        chunk.productId, chunk.handle, chunk.categories, chunk.region, chunk.locale, chunk.source, chunk.updatedAt])
+    }
+    await client.query("delete from laicai_knowledge.chunks where not (id = any($1::text[]))", [chunks.map(({ id }) => id)])
+    await client.query("commit")
+  } catch (error) {
+    await client.query("rollback")
+    throw error
+  }
+}
+
+function getEmbeddingProvider() {
+  const base = process.env.AI_EMBEDDING_BASE_URL?.trim()
+  const model = process.env.AI_EMBEDDING_MODEL?.trim()
+  const key = process.env.AI_EMBEDDING_API_KEY?.trim()
+  if (!base || !model || !key) return null
+  const url = new URL(base)
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+  if ((url.protocol !== "https:" && !(local && url.protocol === "http:")) ||
+      url.username || url.password || url.search || url.hash) {
+    throw new Error("Invalid Embedding provider URL")
+  }
+  url.pathname = url.pathname.replace(/\/+$/, "")
+  if (!url.pathname.endsWith("/embeddings")) url.pathname += "/embeddings"
+  return { url, model, key }
+}
+
+async function importEmbeddings(client, provider) {
+  const identity = [provider.url.href, provider.model]
+  const { rows } = await client.query(`
+    select id, content, content_hash from laicai_knowledge.chunks
+    where embedding is null or (embedding_provider, embedding_model) is distinct from ($1::text, $2::text)
+    order by id
+  `, identity)
+  const generated = []
+  let dimensions
+  for (let start = 0; start < rows.length; start += 8) {
+    const batch = rows.slice(start, start + 8)
+    const response = await fetch(provider.url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: provider.model,
+        input: batch.map(({ content }) => content),
+        encoding_format: "float",
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
+    })
+    if (!response.ok) throw new Error(`Embedding provider returned HTTP ${response.status}`)
+    const data = (await response.json()).data
+    if (!Array.isArray(data) || data.length !== batch.length) throw new Error("Embedding response count mismatch")
+    const vectors = new Map(data.map(({ index, embedding }) => [index, embedding]))
+    for (const [index, row] of batch.entries()) {
+      const vector = vectors.get(index)
+      if (!Array.isArray(vector) || !vector.length || vector.some((value) => !Number.isFinite(Math.fround(value)) || typeof value !== "number")) {
+        throw new Error("Invalid Embedding vector")
+      }
+      dimensions ??= vector.length
+      if (vector.length !== dimensions) throw new Error("Inconsistent Embedding dimensions")
+      generated.push({ ...row, vector })
+    }
+  }
+  if (!generated.length) return 0
+
+  await client.query("begin")
+  try {
+    await client.query("select pg_advisory_xact_lock(hashtext('laicai_knowledge_import'))")
+    const existing = await client.query(`
+      select distinct embedding_dimensions from laicai_knowledge.chunks
+      where (embedding_provider, embedding_model) = ($1::text, $2::text)
+    `, identity)
+    if (existing.rows.some((row) => row.embedding_dimensions !== dimensions)) {
+      throw new Error("Embedding model returned a different dimension from stored vectors")
+    }
+    for (const { id, content_hash, vector } of generated) {
+      const updated = await client.query(`
+        update laicai_knowledge.chunks
+        set embedding = $3, embedding_provider = $4, embedding_model = $5
+        where id = $1 and content_hash = $2
+      `, [id, content_hash, vector, ...identity])
+      if (updated.rowCount !== 1) throw new Error("Knowledge changed while embeddings were being generated")
+    }
+    await client.query("commit")
+    return generated.length
+  } catch (error) {
+    await client.query("rollback")
+    throw error
+  }
+}
+
+async function main() {
+  const databaseUrl = process.env.DATABASE_URL
+  if (!databaseUrl || !["localhost", "127.0.0.1", "[::1]"].includes(new URL(databaseUrl).hostname)) {
+    throw new Error("A local PostgreSQL DATABASE_URL is required")
+  }
+  const documents = readDocuments()
+  const chunks = buildChunks(documents, await resolveProductIds(documents))
+  if (!chunks.length) throw new Error("No knowledge chunks found")
+  const client = new pg.Client({ connectionString: databaseUrl, connectionTimeoutMillis: 5000 })
+  await client.connect()
+  try {
+    await importText(client, chunks)
+    console.log(`Imported ${chunks.length} chunks from ${documents.length} approved documents.`)
+    const provider = textOnly ? null : getEmbeddingProvider()
+    if (provider) console.log(`Stored ${await importEmbeddings(client, provider)} new embeddings.`)
+    else console.log("Embedding step skipped.")
+    const { rows } = await client.query(`
+      select count(*)::int as chunks, count(embedding)::int as embedded, min(embedding_dimensions) as dimensions
+      from laicai_knowledge.chunks
+    `)
+    console.log(rows[0])
+  } finally {
+    await client.end()
+  }
+}
+
+main().catch((error) => {
+  console.error(error.code ? `Knowledge import failed (${error.code}).` : error.message)
+  process.exitCode = 1
+})

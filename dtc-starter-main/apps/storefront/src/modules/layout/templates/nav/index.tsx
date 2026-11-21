@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import Image from "next/image"
 
-import { BRAND_ICON_PATH, BRAND_NAME, BRAND_WORDMARK, STORE_NAME } from "@lib/util/brand"
+import { BRAND_NAME, BRAND_WORDMARK, STORE_NAME } from "@lib/util/brand"
 import AiChatTrigger from "@modules/ai-chat/components/ai-chat-trigger"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
@@ -21,13 +21,15 @@ const BrandLogo = () => (
     data-testid="nav-store-link"
     aria-label={`${STORE_NAME}首页`}
   >
-    <Image
-      src={BRAND_ICON_PATH}
-      alt=""
-      width={32}
-      height={32}
-      className="h-8 w-8 shrink-0 transition-transform motion-safe:group-hover:scale-105"
-    />
+    <span className="relative h-8 w-8 shrink-0 overflow-hidden mix-blend-lighten transition-transform motion-safe:group-hover:scale-105">
+      <Image
+        src="/laicai-nav-logo.webp"
+        alt=""
+        width={256}
+        height={256}
+        className="absolute left-1/2 top-1/2 h-[66px] w-[66px] max-w-none -translate-x-1/2 -translate-y-[48%]"
+      />
+    </span>
     <span className="relative flex flex-col pb-1.5">
       <span className="text-xl font-extrabold leading-none tracking-wider">{BRAND_NAME}</span>
       <span className="mt-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.2em] text-brand-orange">

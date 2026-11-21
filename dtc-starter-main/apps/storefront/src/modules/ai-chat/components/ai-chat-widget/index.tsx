@@ -47,8 +47,6 @@ const initialMessages: ChatMessage[] = [
   { id: 0, role: "assistant", content: WELCOME_MESSAGE },
 ]
 
-const AI_CHAT_ENDPOINT = process.env.NEXT_PUBLIC_AI_CHAT_API_URL
-
 const getMockReply = (query: string, product?: AiChatProduct) => {
   if (query.includes("退") || query.includes("换")) {
     return "退换货条件会受到商品类型、订单状态和地区政策影响。你可以先查看商品详情页的配送与退货说明，最终以下单时的政策为准；如果告诉我具体商品，我也可以帮你整理需要确认的要点。"
@@ -75,36 +73,21 @@ const getMockReply = (query: string, product?: AiChatProduct) => {
 
 const requestAssistantReply = async (
   query: string,
+  countryCode: string,
+  history: Pick<ChatMessage, "role" | "content">[],
   product?: AiChatProduct
 ) => {
-  // RAG 接口预留：将 NEXT_PUBLIC_AI_CHAT_API_URL 设置为 /api/chat 后，这里会以
-  // POST JSON 的方式请求后端，例如 { query, product }。
-  if (AI_CHAT_ENDPOINT) {
-    try {
-      const response = await fetch(AI_CHAT_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, product }),
-      })
-
-      if (response.ok) {
-        const data = (await response.json()) as {
-          reply?: string
-          message?: string
-          answer?: string
-        }
-
-        if (data.reply || data.message || data.answer) {
-          return data.reply || data.message || data.answer || ""
-        }
-      }
-    } catch {
-      // 后端暂未可用时继续返回演示回复，避免影响前端购物体验。
-    }
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, countryCode, productHandle: product?.handle, history }),
+  })
+  const data: { reply?: string; code?: string } = await response.json()
+  if (response.ok && data.reply) return { reply: data.reply, live: true }
+  if (data.code === "AI_NOT_CONFIGURED") {
+    return { reply: `演示回复\n${getMockReply(query, product)}`, live: false }
   }
-
-  await new Promise((resolve) => window.setTimeout(resolve, 500))
-  return getMockReply(query, product)
+  throw new Error("Chat unavailable")
 }
 
 const AiChatConversation = ({ pathname }: { pathname: string }) => {
@@ -132,13 +115,15 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
     : QUICK_PROMPTS
   const nextMessageId = useRef(1)
   const requestQueue = useRef(Promise.resolve())
+  const modelHistory = useRef<{ handle?: string | null; turns: Pick<ChatMessage, "role" | "content">[] }>({ turns: [] })
   const pendingRequests = useRef(0)
   const messageListRef = useRef<HTMLDivElement>(null)
   const isProductPage = pathname.includes("/products/")
+  const countryCode = pathname.split("/")[1] || ""
 
   const sendQuery = useCallback(
     (rawQuery: string, product?: AiChatProduct) => {
-      const query = rawQuery.trim()
+      const query = rawQuery.trim().slice(0, 1000)
       if (!query) return
 
       pendingRequests.current++
@@ -154,11 +139,20 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
         setMessages((current) => [...current, userMessage])
 
         try {
-          const reply = await requestAssistantReply(query, product)
+          const history = modelHistory.current.handle === product?.handle ? modelHistory.current.turns : []
+          const { reply, live } = await requestAssistantReply(query, countryCode, history, product)
           const assistantMessage: ChatMessage = {
             id: nextMessageId.current++,
             role: "assistant",
             content: reply,
+          }
+          if (live) {
+            modelHistory.current = {
+              handle: product?.handle,
+              turns: [...history, userMessage, assistantMessage]
+                .slice(-6)
+                .map(({ role, content }) => ({ role, content: content.slice(0, 1000) })),
+            }
           }
           setMessages((current) => [...current, assistantMessage])
         } catch {
@@ -174,7 +168,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
         }
       })
     },
-    []
+    [countryCode]
   )
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 "use client"
 
+import { getApparelSizeGuide } from "@lib/util/apparel-size-guide"
 import Back from "@modules/common/icons/back"
 import FastDelivery from "@modules/common/icons/fast-delivery"
 import Refresh from "@modules/common/icons/refresh"
@@ -42,6 +43,7 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
 }
 
 const ProductInfoTab = ({ product }: ProductTabsProps) => {
+  const guide = getApparelSizeGuide(product.handle)
   return (
     <div className="text-small-regular py-8">
       <div className="grid grid-cols-2 gap-x-8">
@@ -74,6 +76,44 @@ const ProductInfoTab = ({ product }: ProductTabsProps) => {
           </div>
         </div>
       </div>
+      {guide && <ProductSizeGuide guide={guide} />}
+    </div>
+  )
+}
+
+function ProductSizeGuide({ guide }: { guide: NonNullable<ReturnType<typeof getApparelSizeGuide>> }) {
+  return (
+    <div className="mt-6 border-t border-gray-100 pt-5">
+      <div
+        role="region"
+        aria-label="尺码对照表"
+        tabIndex={0}
+        className="overflow-x-auto rounded-md border border-gray-200 focus-visible:ring-2 focus-visible:ring-brand-navy"
+      >
+        <table className="w-full border-collapse text-center text-xs tabular-nums text-gray-700">
+          <caption className="bg-white px-3 py-2.5 text-left text-sm font-semibold text-brand-ink">
+            {guide.caption}
+          </caption>
+          <thead className="bg-gray-50 text-brand-ink">
+            <tr>
+              {guide.columns.map((column) => (
+                <th key={column} scope="col" className="px-1.5 py-2 font-semibold">{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {guide.rows.map(([size, ...measurements]) => (
+              <tr key={size} className="border-t border-gray-100 even:bg-gray-50">
+                <th scope="row" className="px-1.5 py-2 font-semibold text-brand-ink">{size}</th>
+                {measurements.map((measurement, index) => (
+                  <td key={guide.columns[index + 1]} className="whitespace-nowrap px-1.5 py-2">{measurement}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-gray-600">{guide.fitNote}</p>
     </div>
   )
 }
