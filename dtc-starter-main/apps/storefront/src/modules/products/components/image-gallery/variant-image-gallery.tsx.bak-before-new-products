@@ -1,0 +1,76 @@
+﻿"use client"
+
+import { HttpTypes } from "@medusajs/types"
+import { useSearchParams } from "next/navigation"
+import { useMemo } from "react"
+import ImageGallery from "."
+
+const HUAWEI_HANDLE = "huawei-pura-90-pro-max"
+const HUAWEI_IMAGE_FOLDER = "/catalog-preview/gallery"
+
+const HUAWEI_COLOR_FILES: Record<string, string[]> = {
+  "晨曦金": ["gold-main", "gold1", "gold2", "gold3"],
+  "霞光紫": ["purple-main", "purple2", "purple3", "purple4"],
+  "橘子海": ["orange-main", "orange2", "orange3", "orange4"],
+  "翡翠湖": ["green-main", "green2", "green3", "green4"],
+}
+
+function getImagesForVariant(
+  product: HttpTypes.StoreProduct,
+  selectedVariantId?: string
+): HttpTypes.StoreProductImage[] {
+  const fallback = product.thumbnail ? ([{ id: "product-main-thumbnail", url: product.thumbnail }, ...(product.images ?? []).filter((image) => image.url !== product.thumbnail)] as HttpTypes.StoreProductImage[]) : (product.images ?? [])
+  if (!selectedVariantId) return fallback
+
+  const variant = product.variants?.find((item) => item.id === selectedVariantId)
+  if (!variant) return fallback
+
+  // Only apply the local color-photo mapping to the HUAWEI product.
+  if (product.handle === HUAWEI_HANDLE) {
+    const colorOption = product.options?.find((option) => option.title === "颜色")
+    const selectedColor = variant.options?.find(
+      (option) => option.option_id === colorOption?.id
+    )?.value
+    const files = selectedColor ? HUAWEI_COLOR_FILES[selectedColor] : undefined
+
+    if (files?.length) {
+      return files.map((name) => ({
+        id: `huawei-${name}`,
+        url: `${name.endsWith("-main") ? "/catalog-preview" : HUAWEI_IMAGE_FOLDER}/${HUAWEI_HANDLE}-${name}.webp`,
+      })) as HttpTypes.StoreProductImage[]
+    }
+    // Obsidian black keeps the original product gallery.
+    if (selectedColor === "曜石黑") return fallback
+  }
+
+  // Preserve the existing variant-image behavior for all other products.
+  if (!variant.images?.length) return fallback
+  const imageIds = new Set(variant.images.map((image) => image.id))
+  const images = fallback.filter((image) => imageIds.has(image.id))
+  return images.length ? images : fallback
+}
+
+export default function VariantImageGallery({
+  product,
+}: {
+  product: HttpTypes.StoreProduct
+}) {
+  const searchParams = useSearchParams()
+  const variantId = searchParams.get("v_id") ?? undefined
+  const images = useMemo(
+    () => getImagesForVariant(product, variantId),
+    [product, variantId]
+  )
+
+  return (
+    <ImageGallery
+      key={variantId ?? "default"}
+      images={images}
+      thumbnail={product.thumbnail}
+      title={product.title}
+    />
+  )
+}
+
+
+
