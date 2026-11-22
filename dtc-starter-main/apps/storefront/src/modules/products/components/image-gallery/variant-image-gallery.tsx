@@ -5,128 +5,117 @@ import { useSearchParams } from "next/navigation"
 import { useMemo } from "react"
 import ImageGallery from "."
 
-// Exact filenames from storefront/public. Keep the main images in
-// /catalog-preview and the detail images in /catalog-preview/gallery.
-// Some original files intentionally have spaces before .webp, a misspelling
-// (gloden), or uppercase letters. These are preserved in the paths below.
-const ROOT = "/catalog-preview/"
-const GALLERY = "/catalog-preview/gallery/"
-
 type PhotoSet = { main: string; details: string[] }
-type ColorPhotos = Record<string, PhotoSet>
+type ProductPhotoConfig = Record<string, PhotoSet>
 
-const PHOTO_CONFIG: Record<string, ColorPhotos> = {
-  "huawei-pura-90-pro-max": {
-    "晨曦金": {
-      main: "huawei-pura-90-pro-max-gold-main.webp",
-      details: ["gold1", "gold2", "gold3"].map((s) => `huawei-pura-90-pro-max-${s}.webp`),
-    },
-    "霞光紫": {
-      main: "huawei-pura-90-pro-max-purple-main.webp",
-      details: ["purple2", "purple3", "purple4"].map((s) => `huawei-pura-90-pro-max-${s}.webp`),
-    },
-    "橘子海": {
-      main: "huawei-pura-90-pro-max-orange-main.webp",
-      details: ["orange2", "orange3", "orange4"].map((s) => `huawei-pura-90-pro-max-${s}.webp`),
-    },
-    "翡翠湖": {
-      main: "huawei-pura-90-pro-max-green-main.webp",
-      details: ["green2", "green3", "green4"].map((s) => `huawei-pura-90-pro-max-${s}.webp`),
-    },
-    // 曜石黑 retains the product thumbnail and existing gallery from Medusa.
+const PHOTO_CONFIG: Record<string, ProductPhotoConfig> = {
+  "huawei-changxiang-100-pro": {
+    "幻夜黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "雀翎蓝": { main: "blue", details: ["blue-angle1", "blue-angle2", "blue-angle3", "blue-angle4"] },
+    "羽砂紫": { main: "purple", details: ["purple-angle1", "purple-angle2", "purple-angle3", "purple-angle4"] },
+    "羽砂白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
+  },
+  "huawei-changxiang-90-pro-max": {
+    "曜金黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "晨曦金": { main: "golden", details: ["golden-angle1", "golden-angle2", "golden-angle3", "golden-angle4"] },
+    "飞天青": { main: "green", details: ["green-angle1", "green-angle2", "green-angle3", "green-angle4"] },
+    "雪域白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
   },
   "huawei-mate-90-pro-max": {
-    "曜石黑": {
-      main: "huawei-mate-90-pro-max-black .webp",
-      details: [1, 2, 3, 4].map((n) => `huawei-mate-90-pro-max-black-angle${n} .webp`),
-    },
-    "玫瑰金": {
-      main: "huawei-mate-90-pro-max-gloden .webp",
-      details: [1, 2, 3, 4].map((n) => `huawei-mate-90-pro-max-gloden-angle${n} .webp`),
-    },
-    "翡冷翠": {
-      main: "huawei-mate-90-pro-max-green .webp",
-      details: [
-        "huawei-mate-90-pro-max-green-angle1 .webp",
-        "huawei-mate-90-pro-max-green-angle2 .webp",
-        "huawei-mate-90-pro-max-green-angle3.webp",
-        "huawei-mate-90-pro-max-green-angle4.webp",
-      ],
-    },
-    "晶钻白": {
-      main: "huawei-mate-90-pro-max-white.webp",
-      details: [1, 2, 3, 4].map((n) => `huawei-mate-90-pro-max-white-angle${n}.webp`),
-    },
+    "曜石黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "玫瑰金": { main: "golden", details: ["golden-angle1", "golden-angle2", "golden-angle3", "golden-angle4"] },
+    "翡冷翠": { main: "green", details: ["green-angle1", "green-angle2", "green-angle3", "green-angle4"] },
+    "晶钻白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
+  },
+  "huawei-nova-16-se": {
+    "星空黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "天际白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
+    "破晓橙": { main: "orange", details: ["orange-angle1", "orange-angle2", "orange-angle3", "orange-angle4"] },
+    "樱雪晴空": { main: "color", details: ["color-angle1", "color-angle2", "color-angle3", "color-angle4"] },
+  },
+  "huawei-nova-16": {
+    "星空黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "晴空蓝": { main: "blue", details: ["blue-angle1", "blue-angle2", "blue-angle3", "blue-angle4"] },
+    "幻彩贝母": { main: "color", details: ["color-angle1", "color-angle2", "color-angle3", "color-angle4"] },
+    "天际白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
+  },
+  "huawei-osta-o1-pro": {
+    "星空黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "星芒紫": { main: "purple", details: ["purple-angle1", "purple-angle2", "purple-angle3", "purple-angle4"] },
+    "星云白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
+  },
+  "huawei-pura-90-pro": {
+    "桑果黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "橘子汽水": { main: "orange", details: ["orange-angle1", "orange-angle2", "orange-angle3", "orange-angle4"] },
+    "粉红芭乐": { main: "pink", details: ["pink-angle1", "pink-angle2", "pink-angle3", "pink-angle4"] },
+    "椰青白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
+  },
+  "huawei-pura-x-max": {
+    "幻夜黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "零度白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
+    "星际蓝": { main: "blue", details: ["blue-angle1", "blue-angle2", "blue-angle3", "blue-angle4"] },
+    "橄榄金": { main: "golden", details: ["golden-angle1", "golden-angle2", "golden-angle3", "golden-angle4"] },
+    "活力橙": { main: "orange", details: ["orange-angle1", "orange-angle2", "orange-angle3", "orange-angle4"] },
   },
   "huawei-pura-x-view": {
-    "幻夜黑": {
-      // Use the original uploaded main image for consistency with other colors.
-      main: "HUAWEI-Pura-X-View-black.webp",
-      details: [1, 2, 3, 4].map((n) => `HUAWEI-Pura-X-View-black-angle${n}.webp`),
-    },
-    "跃影红": {
-      main: "HUAWEI-Pura-X-View-red.webp",
-      details: [
-        "HUAWEI-Pura-X-View-red-angle1 .webp",
-        "HUAWEI-Pura-X-View-red-angle2.webp",
-        "HUAWEI-Pura-X-View-red-angle3 .webp",
-        "HUAWEI-Pura-X-View-red-angle4.webp",
-      ],
-    },
-    "亚麻灰": {
-      main: "HUAWEI-Pura-X-View-grey.webp",
-      details: [1, 2, 3, 4].map((n) => `HUAWEI-Pura-X-View-grey-angle${n}.webp`),
-    },
-    "零度白": {
-      main: "HUAWEI-Pura-X-View-white.webp",
-      details: [
-        "HUAWEI-Pura-X-View-white-angle1.webp",
-        "HUAWEI-Pura-X-View-white-angle2 .webp",
-        "HUAWEI-Pura-X-View-white-angle3 .webp",
-        "HUAWEI-Pura-X-View-white-angle4 .webp",
-      ],
-    },
+    "幻夜黑": { main: "black", details: ["black-angle1", "black-angle2", "black-angle3", "black-angle4"] },
+    "跃影红": { main: "red", details: ["red-angle1", "red-angle2", "red-angle3", "red-angle4"] },
+    "亚麻灰": { main: "grey", details: ["grey-angle1", "grey-angle2", "grey-angle3", "grey-angle4"] },
+    "零度白": { main: "white", details: ["white-angle1", "white-angle2", "white-angle3", "white-angle4"] },
   },
 }
+
+const MAIN_FOLDER = "/catalog-preview"
+const GALLERY_FOLDER = "/catalog-preview/gallery"
 
 function getImagesForVariant(
   product: HttpTypes.StoreProduct,
   selectedVariantId?: string
 ): HttpTypes.StoreProductImage[] {
   const original = product.thumbnail
-    ? ([
-        { id: "product-main-thumbnail", url: product.thumbnail },
-        ...(product.images ?? []).filter((image) => image.url !== product.thumbnail),
-      ] as HttpTypes.StoreProductImage[])
+    ? ([{ id: "product-main-thumbnail", url: product.thumbnail },
+        ...(product.images ?? []).filter((image) => image.url !== product.thumbnail)] as HttpTypes.StoreProductImage[])
     : (product.images ?? [])
 
   const variant = product.variants?.find((item) => item.id === selectedVariantId)
   const mappings = product.handle ? PHOTO_CONFIG[product.handle] : undefined
-
   if (mappings) {
     const colorOption = product.options?.find((option) => option.title === "颜色")
-    const selectedColor = variant?.options?.find(
+    const chosen = variant?.options?.find(
       (option) => option.option_id === colorOption?.id
     )?.value
-    const fallbackColor = product.handle === "huawei-mate-90-pro-max" ? "曜石黑" : "幻夜黑"
-    const photos = (selectedColor && mappings[selectedColor]) ||
-      (product.handle === "huawei-pura-90-pro-max" ? undefined : mappings[fallbackColor])
-
+    const photos = chosen ? mappings[chosen] : undefined
     if (photos) {
-      return [
-        { id: `${product.handle}-${photos.main}`, url: ROOT + photos.main },
-        ...photos.details.map((file) => ({
-          id: `${product.handle}-${file}`,
-          url: GALLERY + file,
-        })),
-      ] as HttpTypes.StoreProductImage[]
+      const names = [
+        { name: photos.main, main: true },
+        ...photos.details.map((name) => ({ name, main: false })),
+      ]
+      return names.map(({ name, main }) => ({
+        id: `${product.handle}-${chosen}-${name}`,
+        url: `${main ? MAIN_FOLDER : GALLERY_FOLDER}/${product.handle}-${main ? `${name}-main` : name}.webp`,
+      })) as HttpTypes.StoreProductImage[]
     }
-
-    // Pura 90 曜石黑 continues to use the original product image gallery.
-    if (product.handle === "huawei-pura-90-pro-max") return original
   }
 
-  // Preserve default variant image handling for unrelated products.
+  // Keep the existing Pura 90 Pro Max mapping and all non-Huawei behavior intact.
+  if (product.handle === "huawei-pura-90-pro-max" && selectedVariantId) {
+    const colorOption = product.options?.find((option) => option.title === "颜色")
+    const chosen = variant?.options?.find((option) => option.option_id === colorOption?.id)?.value
+    const oldFiles: Record<string, string[]> = {
+      "晨曦金": ["gold1", "gold2", "gold3"],
+      "霞光紫": ["purple2", "purple3", "purple4"],
+      "橘子海": ["orange2", "orange3", "orange4"],
+      "翡翠湖": ["green2", "green3", "green4"],
+    }
+    const files = chosen ? oldFiles[chosen] : undefined
+    if (files) {
+      return files.map((name) => ({
+        id: `huawei-pura-90-pro-max-${name}`,
+        url: `${GALLERY_FOLDER}/huawei-pura-90-pro-max-${name}.webp`,
+      })) as HttpTypes.StoreProductImage[]
+    }
+  }
+
   if (!variant?.images?.length) return original
   const ids = new Set(variant.images.map((image) => image.id))
   const filtered = original.filter((image) => ids.has(image.id))
@@ -136,7 +125,10 @@ function getImagesForVariant(
 export default function VariantImageGallery({ product }: { product: HttpTypes.StoreProduct }) {
   const searchParams = useSearchParams()
   const variantId = searchParams.get("v_id") ?? undefined
-  const images = useMemo(() => getImagesForVariant(product, variantId), [product, variantId])
+  const images = useMemo(
+    () => getImagesForVariant(product, variantId),
+    [product, variantId]
+  )
   return (
     <ImageGallery
       key={variantId ?? "default"}
