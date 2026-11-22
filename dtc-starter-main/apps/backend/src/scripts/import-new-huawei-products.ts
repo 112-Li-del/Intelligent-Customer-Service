@@ -14,7 +14,7 @@ const COLOR_OPTION_ID = "opt_01M7QRB8WQ8V1EA069FWGAE83Q"
 const STOCK = 30
 const BATCH = "huawei-new-2026-11"
 
-const catalog = [
+export const catalog = [
   {
     handle: "huawei-mate-90-pro-max",
     title: "HUAWEI Mate 90 Pro Max",
@@ -68,7 +68,7 @@ const catalog = [
 
 type CatalogItem = (typeof catalog)[number]
 
-function expectedVariants(item: CatalogItem) {
+export function expectedVariants(item: CatalogItem) {
   return item.colors.flatMap((color) => item.versions.map((version) => ({
     sku: `ZX-${item.handle.toUpperCase().replace(/-/g, "-")}-${version.key}-${color.key.toUpperCase()}`,
     color: color.value,

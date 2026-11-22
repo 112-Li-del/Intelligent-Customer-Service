@@ -8,6 +8,7 @@ export type AiChatProduct = {
   price?: string
   description?: string | null
   specs?: [string, string][]
+  purchasedHandles?: string[]
 }
 
 export type AiChatOpenDetail = {

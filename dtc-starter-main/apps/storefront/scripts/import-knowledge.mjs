@@ -1,25 +1,11 @@
 import { createHash } from "node:crypto"
 import { readFileSync, readdirSync } from "node:fs"
 import pg from "pg"
+import { getEmbeddingProvider, keywordTokens } from "../src/lib/ai/knowledge-input.mjs"
 
 const knowledge = new URL("../../../knowledge-base/", import.meta.url)
-const segmenter = new Intl.Segmenter("zh-CN", { granularity: "word" })
 const textOnly = process.argv.includes("--text-only")
 const hash = (text) => createHash("sha256").update(text).digest("hex")
-
-function keywordText(content) {
-  const tokens = new Set()
-  for (const { segment, isWordLike } of segmenter.segment(content.normalize("NFKC").toLowerCase())) {
-    if (isWordLike) tokens.add(segment)
-  }
-  for (const [phrase] of content.matchAll(/\p{Script=Han}+/gu)) {
-    const chars = Array.from(phrase)
-    for (let index = 0; index + 1 < chars.length; index++) {
-      tokens.add(chars[index] + chars[index + 1])
-    }
-  }
-  return [content, ...tokens].join(" ")
-}
 
 function readDocuments() {
   const documents = []
@@ -99,7 +85,7 @@ function buildChunks(documents, ids) {
         id: hash(JSON.stringify([file, heading, size])),
         file, title, heading, size, content,
         hash: hash(content),
-        keywords: keywordText(content),
+        keywords: [content, ...keywordTokens(content)].join(" "),
         productId: ids.get(metadata.product_handle) ?? null,
         handle: metadata.product_handle ?? null,
         categories: metadata.categories ?? [],
@@ -113,6 +99,13 @@ function buildChunks(documents, ids) {
 }
 
 async function importText(client, chunks) {
+  const relations = JSON.parse(readFileSync(new URL("product-relations.json", knowledge), "utf8"))
+  const handles = new Set(chunks.map(({ handle }) => handle).filter(Boolean))
+  for (const { from, to } of relations) {
+    if ((!handles.has(from) && !from.startsWith("scene:")) || !handles.has(to) || from === to) {
+      throw new Error(`Invalid product relation: ${from} -> ${to}`)
+    }
+  }
   await client.query("begin")
   try {
     await client.query("select pg_advisory_xact_lock(hashtext('laicai_knowledge_import'))")
@@ -147,7 +140,21 @@ async function importText(client, chunks) {
       create index if not exists knowledge_search_terms on laicai_knowledge.chunks using gin (search_terms);
       create index if not exists knowledge_product_region on laicai_knowledge.chunks (product_id, region_code);
       create index if not exists knowledge_document_path on laicai_knowledge.chunks (document_path);
+      create table if not exists laicai_knowledge.product_relations (
+        source_node text not null,
+        target_handle text not null,
+        relation_type text not null,
+        reason text not null,
+        primary key (source_node, target_handle)
+      );
     `)
+    await client.query("delete from laicai_knowledge.product_relations")
+    for (const { from, to, type, reason } of relations) {
+      await client.query(
+        "insert into laicai_knowledge.product_relations values ($1, $2, $3, $4)",
+        [from, to, type, reason],
+      )
+    }
     for (const chunk of chunks) {
       await client.query(`
         insert into laicai_knowledge.chunks as existing
@@ -171,22 +178,6 @@ async function importText(client, chunks) {
     await client.query("rollback")
     throw error
   }
-}
-
-function getEmbeddingProvider() {
-  const base = process.env.AI_EMBEDDING_BASE_URL?.trim()
-  const model = process.env.AI_EMBEDDING_MODEL?.trim()
-  const key = process.env.AI_EMBEDDING_API_KEY?.trim()
-  if (!base || !model || !key) return null
-  const url = new URL(base)
-  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
-  if ((url.protocol !== "https:" && !(local && url.protocol === "http:")) ||
-      url.username || url.password || url.search || url.hash) {
-    throw new Error("Invalid Embedding provider URL")
-  }
-  url.pathname = url.pathname.replace(/\/+$/, "")
-  if (!url.pathname.endsWith("/embeddings")) url.pathname += "/embeddings"
-  return { url, model, key }
 }
 
 async function importEmbeddings(client, provider) {

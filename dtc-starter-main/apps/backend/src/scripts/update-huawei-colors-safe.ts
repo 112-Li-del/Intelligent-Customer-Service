@@ -1,4 +1,4 @@
-﻿import type { ExecArgs } from "@medusajs/framework/types"
+import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import {
   setProductProductOptionsWorkflow,
@@ -9,7 +9,7 @@ import {
 
 const HANDLE = "huawei-pura-90-pro-max"
 const COLOR_OPTION_ID = "opt_01M7QRB8WQ8V1EA069FWGAE83Q"
-const COLORS = ["曜石黑", "晨曦金", "霞光紫", "橘子海", "翡翠湖"]
+export const COLORS = ["曜石黑", "晨曦金", "霞光紫", "橘子海", "翡翠湖"]
 const CONFIG = [
   { size: "12GB+256GB", suffix: "12-256", price: 6499 },
   { size: "12GB+512GB", suffix: "12-512", price: 6999 },

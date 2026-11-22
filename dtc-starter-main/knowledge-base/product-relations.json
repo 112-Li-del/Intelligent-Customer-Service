@@ -1,0 +1,17 @@
+[
+  {"from":"sweatshirt","to":"sweatpants","type":"outfit","reason":"运动长裤可以和卫衣组成日常休闲穿搭。"},
+  {"from":"sweatshirt","to":"shorts","type":"outfit","reason":"休闲短裤适合天气较暖时搭配卫衣。"},
+  {"from":"sweatpants","to":"sweatshirt","type":"outfit","reason":"圆领卫衣可以作为运动长裤的休闲上装。"},
+  {"from":"shorts","to":"sweatshirt","type":"outfit","reason":"天气转凉时可以给短裤搭配一件卫衣。"},
+  {"from":"foldable-laptop-stand","to":"usb-c-power-bank","type":"complement","reason":"差旅办公时可给手机或耳机应急补电。"},
+  {"from":"glass-lunch-box","to":"steel-travel-mug","type":"routine","reason":"带饭通勤时可以用随行杯单独装饮品。"},
+  {"from":"steel-travel-mug","to":"glass-lunch-box","type":"routine","reason":"想开始带饭通勤时，玻璃饭盒可用来分开携带餐食。"},
+  {"from":"scene:work","to":"foldable-laptop-stand","type":"scene","reason":"折叠支架适合布置临时笔记本工位。"},
+  {"from":"scene:work","to":"usb-c-power-bank","type":"scene","reason":"外出时可给手机或耳机应急补电。"},
+  {"from":"scene:lunch","to":"glass-lunch-box","type":"scene","reason":"玻璃饭盒可以用来携带餐食。"},
+  {"from":"scene:lunch","to":"steel-travel-mug","type":"scene","reason":"随行杯可以用来携带饮品。"},
+  {"from":"scene:outfit","to":"sweatshirt","type":"scene","reason":"圆领卫衣适合日常休闲穿搭。"},
+  {"from":"scene:outfit","to":"sweatpants","type":"scene","reason":"运动长裤可用于日常休闲穿搭。"},
+  {"from":"scene:fitness","to":"tpe-yoga-mat","type":"scene","reason":"瑜伽垫适合地面训练。"},
+  {"from":"scene:pets","to":"pet-slow-feeder","type":"scene","reason":"慢食碗可用于需要放慢进食速度的宠物。"}
+]

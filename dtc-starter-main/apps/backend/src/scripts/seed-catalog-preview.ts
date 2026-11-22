@@ -20,7 +20,7 @@ const categories = {
 
 const skuFor = (handle: string) => `ZX-${handle.toUpperCase()}`
 
-const huaweiVariants = [
+export const huaweiVariants = [
   { value: "12GB+256GB", sku: "ZX-HUAWEI-PURA-90-PRO-MAX-12-256", price: 6499 },
   { value: "12GB+512GB", sku: "ZX-HUAWEI-PURA-90-PRO-MAX-12-512", price: 6999 },
   { value: "16GB+512GB", sku: "ZX-HUAWEI-PURA-90-PRO-MAX-16-512", price: 7499 },

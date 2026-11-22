@@ -6,9 +6,16 @@
 
 在商城前端目录的 `.env.local` 中填写聊天的 `AI_CHAT_BASE_URL`、`AI_CHAT_API_KEY`、`AI_CHAT_MODEL`。填写服务商公布的 API 基础地址，保留 `/v1` 等路径前缀。当前聊天接口会在其后拼接 `/chat/completions`，要求供应商支持 OpenAI 兼容的对话格式。填写后重启商城前端开发服务。聊天模型未配置时，客服会标注回复来自演示模式。
 
-`AI_EMBEDDING_BASE_URL`、`AI_EMBEDDING_API_KEY`、`AI_EMBEDDING_MODEL` 用于后续知识切片向量化。可以使用不同的服务商。实际导入时先验证其 `/embeddings` 接口和返回维度。聊天配置和 Embedding 配置均只用于服务端。
+`AI_EMBEDDING_BASE_URL`、`AI_EMBEDDING_API_KEY`、`AI_EMBEDDING_MODEL` 同时用于切片入库和在线问题向量化。在线检索只使用接口地址、模型、维度匹配的向量。聊天配置和 Embedding 配置均只用于服务端。
 
-`AI_RERANK_URL`、`AI_RERANK_API_KEY`、`AI_RERANK_MODEL` 用于对混合检索召回的候选切片精排。`AI_RERANK_URL` 填服务商给出的完整重排接口地址，例如 `https://api.example.com/v1/rerank`。这组配置仅用于服务端，可先留空，待接入知识库检索后启用。
+`AI_RERANK_URL`、`AI_RERANK_API_KEY`、`AI_RERANK_MODEL` 用于候选切片精排。`AI_RERANK_URL` 填服务商给出的完整重排接口地址，例如 `https://api.example.com/v1/rerank`。Embedding 不可用时使用关键词结果，重排不可用时使用原检索排序。
+
+`AI_KNOWLEDGE_DATABASE_URL` 指向已导入知识库的 PostgreSQL，放在商城前端的 `.env.local` 中。前端服务只需对 `laicai_knowledge` schema 和其中两张表的读取权限。本地开发也可以从商城前端目录把后端的 `DATABASE_URL` 传给商城进程。
+
+```powershell
+$env:DATABASE_URL = node --env-file=../backend/.env -p 'process.env.DATABASE_URL'
+pnpm run dev
+```
 
 ## 商品文档
 
@@ -28,7 +35,16 @@
 node --env-file=../backend/.env --env-file=.env.local ./scripts/import-knowledge.mjs
 ```
 
-使用 `--text-only` 只导入正文和关键词索引。导入结果写入独立的 `laicai_knowledge.chunks` 表，同一切片按稳定 ID 更新。再次导入只为缺少向量、正文变更或模型切换的切片请求 Embedding。本地 PostgreSQL 暂无 pgvector 时，浮点向量保存在 `real[]` 中，可用于小数据量的精确相似度查询。
+使用 `--text-only` 跳过向量请求。导入脚本把正文和关键词索引写入 `laicai_knowledge.chunks`，把[搭配与场景关系](./product-relations.json)写入 `laicai_knowledge.product_relations`。同一切片按稳定 ID 更新。再次导入只为缺少向量、正文变更或模型切换的切片请求 Embedding。当前使用 PostgreSQL `real[]` 保存向量并计算余弦相似度。
+
+导入并启动后，在原客服弹窗中可以试问：
+
+- “充电宝的 USB-C 和 USB-A 分别支持多少瓦？”
+- “卫衣 L 码的胸围是多少？”接着问“那 XL 呢？”
+- “买了电脑支架，出差还可以搭配什么？”查看回复里的商品卡片。
+- “卫衣现在多少钱，还有货吗？”按实时商品规格核对结果。
+
+订单确认页会给有搭配关系的已购商品显示“搭配建议”入口。客服也可以从用户提到的商品、当前详情页商品或使用场景查搭配。卡片只展示经 Medusa 确认可下单的商品。价格和库存由接口实时读取，商品资料缺少事实依据时回复暂未查到。
 
 - 导入时按 `product_handle` 解析当前环境的 Medusa 商品 ID。文档和切片至少关联商品 ID、变体 ID（适用时）、章节类型、语言、来源和资料更新时间。类目可关联多个分类 ID。客服引用应能定位到原文件和章节。
 - 每个切片附上商品名和章节标题。尺码表每条切片应保留表头、单位和适用规格。按章节切分，限制单片长度，维持条件与参数的对应关系。

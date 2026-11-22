@@ -16,6 +16,7 @@ import {
 } from "@medusajs/icons"
 import { clx } from "@modules/common/components/ui"
 import Image from "next/image"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   FormEvent,
@@ -32,7 +33,10 @@ type ChatMessage = {
   id: number
   role: "assistant" | "user"
   content: string
+  products?: RecommendedProduct[]
 }
+
+type RecommendedProduct = { title: string; href: string; reason: string; price: string | null }
 
 const WELCOME_MESSAGE =
   "你好，我是来财 AI 导购。你可以告诉我使用场景、预算、尺码或风格偏好，我会帮你理清选购思路。"
@@ -80,10 +84,16 @@ const requestAssistantReply = async (
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, countryCode, productHandle: product?.handle, history }),
+    body: JSON.stringify({
+      query,
+      countryCode,
+      productHandle: product?.handle,
+      purchasedHandles: product?.purchasedHandles,
+      history,
+    }),
   })
-  const data: { reply?: string; code?: string } = await response.json()
-  if (response.ok && data.reply) return { reply: data.reply, live: true }
+  const data: { reply?: string; code?: string; products?: RecommendedProduct[] } = await response.json()
+  if (response.ok && data.reply) return { reply: data.reply, live: true, products: data.products }
   if (data.code === "AI_NOT_CONFIGURED") {
     return { reply: `演示回复\n${getMockReply(query, product)}`, live: false }
   }
@@ -140,11 +150,12 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
 
         try {
           const history = modelHistory.current.handle === product?.handle ? modelHistory.current.turns : []
-          const { reply, live } = await requestAssistantReply(query, countryCode, history, product)
+          const { reply, live, products } = await requestAssistantReply(query, countryCode, history, product)
           const assistantMessage: ChatMessage = {
             id: nextMessageId.current++,
             role: "assistant",
             content: reply,
+            products,
           }
           if (live) {
             modelHistory.current = {
@@ -268,7 +279,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
                   来财 AI 智能客服
                 </h2>
                 <p className="mt-0.5 text-xs text-gray-300">
-                  {productContext ? "当前商品问答" : "演示模式"}
+                  {productContext ? "当前商品问答" : "商品问答与搭配"}
                 </p>
               </div>
             </div>
@@ -331,6 +342,16 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
                   )}
                 >
                   {message.content}
+                  {message.products?.map(({ href, title, price }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:border-brand-orange"
+                    >
+                      <span>{title}</span>
+                      <span className="shrink-0">{price ?? "查看商品"}</span>
+                    </Link>
+                  ))}
                 </div>
               ))}
 
@@ -402,6 +423,6 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
 
 export default function AiChatWidget() {
   const pathname = usePathname()
-  const conversationKey = pathname.includes("/products/") ? pathname : "storefront"
+  const conversationKey = /\/(?:products|order)\//.test(pathname) ? pathname : "storefront"
   return <AiChatConversation key={conversationKey} pathname={pathname} />
 }
