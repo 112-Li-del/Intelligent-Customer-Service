@@ -6,6 +6,7 @@ import { ChevronRight } from "@medusajs/icons"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ImageGallery from "@modules/products/components/image-gallery"
 import VariantImageGallery from "@modules/products/components/image-gallery/variant-image-gallery"
+import PeekRating from "@modules/products/components/peek-rating"
 import ProductActions from "@modules/products/components/product-actions"
 import ProductBreadcrumbBack from "@modules/products/components/product-breadcrumb-back"
 import ProductOnboardingCta from "@modules/products/components/product-onboarding-cta"
@@ -102,7 +103,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
                 <li key={`${author}-${text}`} className="py-4">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                     <span className="font-medium text-brand-ink">{author}</span>
-                    <span className="font-medium text-[#8A4B08]">{rating} / 5</span>
+                    <PeekRating value={rating} />
                   </div>
                   <p className="mt-2 text-sm leading-6 text-gray-700">{text}</p>
                 </li>
