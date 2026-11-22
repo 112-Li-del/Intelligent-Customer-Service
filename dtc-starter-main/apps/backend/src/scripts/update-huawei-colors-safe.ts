@@ -54,7 +54,7 @@ export default async function updateHuaweiColors({ container }: Pick<ExecArgs, "
     const fields = Object.fromEntries((variant.options ?? []).map((v) => [v.option?.title, v.value]))
     if (fields["存储容量"] !== conf.size) throw new Error(`Storage mismatch: ${sku}`)
     if (fields["颜色"] && fields["颜色"] !== "曜石黑") throw new Error(`Original variant color mismatch: ${sku}`)
-    const cny = (variant.price_set?.prices ?? []).find((p) => p.currency_code === "cny")
+    const cny = (variant.price_set?.prices ?? []).find((p) => p?.currency_code === "cny")
     if (Number(cny?.amount) !== conf.price) throw new Error(`Original price mismatch: ${sku}`)
     if ((variant.inventory_items ?? []).length < 1) throw new Error(`Original inventory link missing: ${sku}`)
   }
@@ -152,7 +152,7 @@ export default async function updateHuaweiColors({ container }: Pick<ExecArgs, "
   })
   const missingInventory = createdSkus.filter((sku) => !inventory.some((i) => i.sku === sku))
   if (missingInventory.length) throw new Error(`Created variants missing inventory items: ${missingInventory.join(", ")}`)
-  const noLevels = inventory.filter((i) => !(i.location_levels ?? []).some((level) => level.location_id === warehouseId))
+  const noLevels = inventory.filter((i) => !(i.location_levels ?? []).some((level) => level?.location_id === warehouseId))
   if (noLevels.length) {
     await createInventoryLevelsWorkflow(container).run({
       input: { inventory_levels: noLevels.map((i) => ({

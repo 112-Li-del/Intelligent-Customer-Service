@@ -1,4 +1,6 @@
 import type { ExecArgs } from "@medusajs/framework/types"
+import { existsSync } from "node:fs"
+import { resolve } from "node:path"
 import { ContainerRegistrationKeys, ProductStatus } from "@medusajs/framework/utils"
 import {
   createProductsWorkflow,
@@ -10,11 +12,10 @@ import {
 
 // Default is preview. Set HUAWEI_CATALOG_APPLY=YES to create products/variants.
 const APPLY = process.env.HUAWEI_CATALOG_APPLY === "YES"
-const COLOR_OPTION_ID = "opt_01M7QRB8WQ8V1EA069FWGAE83Q"
 const STOCK = 30
 const BATCH = "huawei-new-2026-11"
 
-const catalog = [
+export const huaweiCatalog = [
   {
     "handle": "huawei-changxiang-100-pro",
     "title": "HUAWEI 畅享 100 Pro",
@@ -608,11 +609,11 @@ const catalog = [
   }
 ] as const
 
-type CatalogItem = (typeof catalog)[number]
+type CatalogItem = (typeof huaweiCatalog)[number]
 
 function expectedVariants(item: CatalogItem) {
-  const restricted = "restricted" in item
-    ? item.restricted as Record<string, string[]>
+  const restricted: Readonly<Record<string, readonly string[]>> | undefined = "restricted" in item
+    ? item.restricted
     : undefined
   return item.versions.flatMap((version) =>
     item.colors
@@ -627,13 +628,16 @@ function expectedVariants(item: CatalogItem) {
 }
 
 export default async function importNewHuaweiProducts({ container }: ExecArgs) {
+  const catalog = huaweiCatalog
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const handles = catalog.map((item) => item.handle)
   const { data: existing } = await query.graph({
     entity: "product", fields: ["id", "handle", "metadata"], filters: { handle: handles },
   })
   const existingHandles = new Set(existing.map((product) => product.handle))
-  // Existing products are deliberately left untouched. This batch only creates missing handles.
+  const toSync = catalog.filter(({ handle }) =>
+    !existingHandles.has(handle) || existing.some((product) => product.handle === handle && product.metadata?.import_batch === BATCH)
+  )
   const preview = catalog.map((item) => ({
     title: item.title,
     handle: item.handle,
@@ -648,9 +652,10 @@ export default async function importNewHuaweiProducts({ container }: ExecArgs) {
     skipped_existing_products: preview.filter((p) => p.existing).length,
     inventory_per_variant: STOCK }, null, 2))
   if (!APPLY) {
-    console.log("PREVIEW ONLY: 数据库未修改。已有商品会在正式执行时跳过，不会更新或覆盖。")
+    console.log("PREVIEW ONLY: 正式执行将创建缺失商品并补齐本批次的规格和库存。")
     return
   }
+  if (!toSync.length) return
 
   // Use same sales channel / category as existing HUAWEI Pura 90 Pro Max.
   const { data: baseProducts } = await query.graph({
@@ -674,13 +679,22 @@ export default async function importNewHuaweiProducts({ container }: ExecArgs) {
   // Verify the existing shared color option before changing anything.
   const { data: sharedOptions } = await query.graph({
     entity: "product_option", fields: ["id", "title", "is_exclusive", "values.id", "values.value"],
-    filters: { id: COLOR_OPTION_ID },
+    filters: { title: "颜色", is_exclusive: false },
   })
   if (sharedOptions.length !== 1 || sharedOptions[0].title !== "颜色" || sharedOptions[0].is_exclusive === true) {
     throw new Error("共享颜色选项不符合预期，已停止。")
   }
+  const colorOptionId = sharedOptions[0].id
 
-  for (const item of catalog.filter((item) => !existingHandles.has(item.handle))) {
+  for (const item of toSync) {
+    const defaultColorKey = item.colors.find((color) => color.value === item.defaultColor)?.key
+    const thumbnailFile = `${item.handle}-${defaultColorKey}-main.webp`
+    if (!defaultColorKey || !existsSync(resolve("../storefront/public/catalog-preview", thumbnailFile))) {
+      throw new Error(`缺少商品主图: ${thumbnailFile}`)
+    }
+  }
+
+  for (const item of toSync) {
     let { data: products } = await query.graph({
       entity: "product", fields: ["id", "handle", "metadata", "options.id", "options.title", "options.values.id", "options.values.value", "variants.id", "variants.sku", "variants.options.option.title", "variants.options.value"],
       filters: { handle: item.handle },
@@ -716,19 +730,19 @@ export default async function importNewHuaweiProducts({ container }: ExecArgs) {
     if (!product.options?.some((o) => o.title === "颜色")) {
       await setProductProductOptionsWorkflow(container).run({
         input: { product_id: product.id,
-          add: [{ product_option_id: COLOR_OPTION_ID, product_option_value_ids: [] }] },
+          add: [{ product_option_id: colorOptionId, product_option_value_ids: [] }] },
       })
     }
     product = await reload()
     const colorOption = product.options?.find((o) => o.title === "颜色")
-    if (colorOption?.id !== COLOR_OPTION_ID) throw new Error(`颜色选项关联异常: ${item.handle}`)
+    if (colorOption?.id !== colorOptionId) throw new Error(`颜色选项关联异常: ${item.handle}`)
     const linkedValues = new Set((colorOption.values ?? []).map((v) => v.value))
     const needColors = item.colors.map((c) => c.value).filter((value) => !linkedValues.has(value))
     if (needColors.length) {
       // Query ALL option values to reuse globally existing ones without duplicates.
       const { data: globalOptions } = await query.graph({
         entity: "product_option", fields: ["id", "values.id", "values.value"],
-        filters: { id: COLOR_OPTION_ID },
+        filters: { id: colorOptionId },
       })
       const allValues = globalOptions[0]?.values ?? []
       const toAdd = needColors.map((value) => {
@@ -737,7 +751,7 @@ export default async function importNewHuaweiProducts({ container }: ExecArgs) {
       })
       await setProductProductOptionsWorkflow(container).run({
         input: { product_id: product.id,
-          update: [{ product_option_id: COLOR_OPTION_ID, add: toAdd }] },
+          update: [{ product_option_id: colorOptionId, add: toAdd }] },
       })
     }
     product = await reload()
@@ -771,21 +785,19 @@ export default async function importNewHuaweiProducts({ container }: ExecArgs) {
     console.log(`创建完成: ${item.handle} / ${desired.length} 个规格`)
   }
 
-  const allSkus = catalog
-    .filter((item) => !existingHandles.has(item.handle))
-    .flatMap((item) => expectedVariants(item).map((v) => v.sku))
+  const allSkus = toSync.flatMap((item) => expectedVariants(item).map((v) => v.sku))
   const { data: inventory } = await query.graph({
     entity: "inventory_item", fields: ["id", "sku", "location_levels.location_id"],
     filters: { sku: allSkus },
   })
   const missingItems = allSkus.filter((sku) => !inventory.some((i) => i.sku === sku))
   if (missingItems.length) throw new Error(`缺少库存项: ${missingItems.join(", ")}`)
-  const noLevels = inventory.filter((i) => !(i.location_levels ?? []).some((lvl) => lvl.location_id === warehouses[0].id))
+  const noLevels = inventory.filter((i) => !(i.location_levels ?? []).some((lvl) => lvl?.location_id === warehouses[0].id))
   if (noLevels.length) {
     await createInventoryLevelsWorkflow(container).run({ input: { inventory_levels: noLevels.map((i) => ({
       inventory_item_id: i.id, location_id: warehouses[0].id, stocked_quantity: STOCK,
     })) } })
   }
-  console.log(`DONE: 新增 ${catalog.filter((item) => !existingHandles.has(item.handle)).length} 款商品，共 ${allSkus.length} 个规格；已有 ${existingHandles.size} 款商品已跳过；新增缺失库存记录 ${noLevels.length} 个。`)
+  console.log(`DONE: 新增 ${toSync.filter(({ handle }) => !existingHandles.has(handle)).length} 款商品，已核对 ${allSkus.length} 个规格，新增 ${noLevels.length} 条库存记录。`)
   console.log("请在管理后台核对商品、价格、库存与销售渠道，然后在前端测试图片切换和下单。")
 }

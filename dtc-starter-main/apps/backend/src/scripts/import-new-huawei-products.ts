@@ -228,7 +228,7 @@ export default async function importNewHuaweiProducts({ container }: ExecArgs) {
   })
   const missingItems = allSkus.filter((sku) => !inventory.some((i) => i.sku === sku))
   if (missingItems.length) throw new Error(`缺少库存项: ${missingItems.join(", ")}`)
-  const noLevels = inventory.filter((i) => !(i.location_levels ?? []).some((lvl) => lvl.location_id === warehouses[0].id))
+  const noLevels = inventory.filter((i) => !(i.location_levels ?? []).some((lvl) => lvl?.location_id === warehouses[0].id))
   if (noLevels.length) {
     await createInventoryLevelsWorkflow(container).run({ input: { inventory_levels: noLevels.map((i) => ({
       inventory_item_id: i.id, location_id: warehouses[0].id, stocked_quantity: STOCK,

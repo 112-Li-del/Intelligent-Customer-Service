@@ -2,9 +2,10 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
-import { existsSync } from "node:fs"
+import { existsSync, readdirSync } from "node:fs"
 import { resolve } from "node:path"
 import catalog from "./catalog-preview-products.json"
+import { huaweiCatalog } from "./import-huawei-catalog"
 
 const galleryViews = ["angle", "detail", "context"]
 
@@ -29,7 +30,27 @@ export default async function syncCatalogPreviewImages({
 
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
-  const handles = catalog.map(({ handle }) => handle)
+  const handles = Array.from(new Set([...catalog, ...huaweiCatalog].map(({ handle }) => handle)))
+  const huaweiHandles = handles.filter((handle) => handle.startsWith("huawei-")).sort((a, b) => b.length - a.length)
+  const catalogPhotos = [
+    { folder: "", files: readdirSync(imageRoot) },
+    { folder: "gallery/", files: readdirSync(resolve(imageRoot, "gallery")) },
+  ].flatMap(({ folder, files }) => {
+    const names = new Set(files)
+    return files.sort().flatMap((file) => {
+      if (!file.endsWith(".webp") || (!folder && !file.endsWith("-main.webp"))) return []
+      const normalized = file.replace(/\s+(?=\.webp$)/, "")
+      if (file !== normalized && names.has(normalized)) return []
+      const owner = huaweiHandles.find((handle) => file.startsWith(`${handle}-`))
+      if (!owner) return []
+      return [{
+        owner,
+        url: `/catalog-preview/${folder}${encodeURIComponent(file)}`,
+        file: resolve(imageRoot, folder, file),
+        type: folder ? "详情图" : "颜色主图",
+      }]
+    })
+  })
 
   const { data: products } = await query.graph({
     entity: "product",
@@ -87,7 +108,11 @@ export default async function syncCatalogPreviewImages({
       })),
     ]
 
-    const validImages = candidates.filter((item) => {
+    const photos = catalogPhotos.filter(({ owner }) => owner === handle)
+    const sources = photos.length
+      ? [...candidates.filter(({ file }) => existsSync(file)), ...photos]
+      : candidates
+    const validImages = [...new Map(sources.map((image) => [image.url, image])).values()].filter((item) => {
       if (!existsSync(item.file)) {
         console.warn(
           `[文件不存在，跳过] ${handle} ${item.type}: ${item.file}`
@@ -109,7 +134,7 @@ export default async function syncCatalogPreviewImages({
       }))
 
     const mainImage = validImages.find(
-      ({ type }) => type === "主图"
+      ({ type }) => type === "主图" || type === "颜色主图"
     )
 
     const needsThumbnail =

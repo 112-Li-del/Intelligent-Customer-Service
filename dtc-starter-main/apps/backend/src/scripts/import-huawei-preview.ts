@@ -74,7 +74,8 @@ export default async function importHuaweiPreview({ container }: ExecArgs) {
   const { data: [warehouse] } = await query.graph({
     entity: "stock_location", fields: ["id"], filters: { name: "European Warehouse" },
   })
-  if (!store?.default_sales_channel_id || !category || !profile || !warehouse) {
+  const salesChannelId = store?.default_sales_channel_id
+  if (!salesChannelId || !category || !profile || !warehouse) {
     throw new Error("Missing preview catalog category, sales channel, shipping profile or warehouse")
   }
 
@@ -90,14 +91,14 @@ export default async function importHuaweiPreview({ container }: ExecArgs) {
     await createProductsWorkflow(container).run({
       input: { products: [{
         handle: product.handle,
-        title: product.title,
+        title: product.title ?? product.handle,
         description: product.description,
         material: product.material,
         status: ProductStatus.PUBLISHED,
         thumbnail: images[0].url,
         images,
         category_ids: [category.id],
-        sales_channels: [{ id: store.default_sales_channel_id }],
+        sales_channels: [{ id: salesChannelId }],
         shipping_profile_id: profile.id,
         metadata: { preview_details: product.details },
         options: [

@@ -26,6 +26,7 @@ coverage
 
 # Misc
 *.pem
+/apps/backend/backups/*.dump
 
 # Debug
 npm-debug.log*
