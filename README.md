@@ -1,6 +1,39 @@
 # 电商智能客服
 
-商城基于 Medusa 和 Next.js。目前可以浏览官方示例商品和体验购物流程，商品说明书和 RAG 问答后续接入。
+商城基于 Medusa 2.0 和 Next.js 构建，包含完整的直营电商购物链路以及**“来财 AI 智能客服”**（结合 RAG 知识库检索、实时库存/价格校验、成衣尺码指南与智能商品搭配推荐）。
+
+---
+
+## ⚡ 极速一键启动（已有环境速查）
+
+如果你已安装好 Node.js、pnpm 和 PostgreSQL，进入 `dtc-starter-main` 目录后只需以下 4 步即可全套跑通：
+
+```powershell
+# 1. 安装依赖并准备环境变量
+cd dtc-starter-main
+pnpm.cmd install --frozen-lockfile
+if (-not (Test-Path apps/backend/.env)) { Copy-Item apps/backend/.env.template apps/backend/.env }
+if (-not (Test-Path apps/storefront/.env.local)) { Copy-Item apps/storefront/.env.template apps/storefront/.env.local }
+# 提示：请确保 apps/backend/.env 中的 DATABASE_URL 密码已填写为你的本机 PostgreSQL 密码
+
+# 2. 数据库迁移与初始化演示商品
+pnpm.cmd --dir apps/backend exec medusa db:migrate
+
+# 3. 导入智能客服知识库与向量数据（支持大模型 RAG 问答）
+pnpm.cmd --dir apps/storefront exec node --env-file=../backend/.env --env-file=.env.local ./scripts/import-knowledge.mjs
+
+# 4. 启动前后端服务（分别在两个终端运行）
+# 终端 1 (后端 9000 端口):
+pnpm.cmd --dir apps/backend run dev
+
+# 终端 2 (前端 8000 端口):
+pnpm.cmd --dir apps/storefront run dev
+```
+
+* 🛍️ **商城前台**：[http://localhost:8000](http://localhost:8000)（右下角点击 ✨ **来财 AI 客服**）
+* ⚙️ **管理后台**：[http://localhost:9000/app](http://localhost:9000/app)
+
+---
 
 ## 需要下载和安装的软件
 
