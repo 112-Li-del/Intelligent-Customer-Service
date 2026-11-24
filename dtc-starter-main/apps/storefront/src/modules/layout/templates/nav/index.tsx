@@ -32,7 +32,7 @@ const BrandLogo = () => (
     </span>
     <span className="relative flex flex-col pb-1.5">
       <span className="text-xl font-extrabold leading-none tracking-wider">{BRAND_NAME}</span>
-      <span className="mt-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.2em] text-brand-orange">
+      <span className="mt-0.5 text-[11px] font-bold uppercase leading-none tracking-[0.2em] text-gradient-amber">
         {BRAND_WORDMARK}
       </span>
       <svg viewBox="0 0 52 7" aria-hidden="true" className="absolute bottom-0 left-0 h-1.5 w-full">
@@ -45,7 +45,7 @@ const BrandLogo = () => (
 export default function Nav() {
   return (
     <div className="sticky inset-x-0 top-0 z-50 shadow-md">
-      <header className="bg-brand-navy text-white">
+      <header className="border-b border-transparent bg-brand-navy text-white [border-image:linear-gradient(90deg,transparent,#febd69_30%,#febd69_70%,transparent)_1]">
         <nav
           className="content-container flex min-h-16 items-center gap-4 py-3 small:gap-6"
           aria-label="主导航"
@@ -99,7 +99,7 @@ export default function Nav() {
         </div>
       </header>
 
-      <div className="bg-brand-navy-light text-sm text-white">
+      <div className="bg-brand-navy-light/95 text-sm text-white backdrop-blur-sm">
         <div className="content-container flex h-11 items-center gap-1">
           <SideMenu />
           <nav
@@ -110,14 +110,14 @@ export default function Nav() {
               <LocalizedClientLink
                 key={link.label}
                 href={link.href}
-                className="shrink-0 rounded-sm px-3 py-2 text-gray-100 transition-colors hover:bg-white/10 hover:text-white"
+                className="shrink-0 rounded-sm px-3 py-2 text-gray-100 transition-colors hover:bg-gradient-to-r hover:from-brand-orange/15 hover:to-transparent hover:text-white"
               >
                 {link.label}
               </LocalizedClientLink>
             ))}
           </nav>
           <AiChatTrigger
-            className="ml-2 flex shrink-0 items-center gap-1.5 rounded-full border border-brand-orange/50 bg-brand-orange/10 px-3 py-1.5 text-xs font-semibold text-brand-orange hover:bg-brand-orange hover:text-brand-navy"
+            className="ml-2 flex shrink-0 items-center gap-1.5 rounded-full border border-brand-orange/50 bg-brand-orange/10 px-3 py-1.5 text-xs font-semibold text-brand-orange shadow-[0_0_12px_rgba(254,189,105,0.35)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-orange hover:shadow-[0_0_18px_rgba(254,189,105,0.55)] motion-safe:hover:scale-[1.03] hover:text-brand-navy"
             aria-label="打开 AI 智能导购"
           >
             <Sparkles className="h-4 w-4" />

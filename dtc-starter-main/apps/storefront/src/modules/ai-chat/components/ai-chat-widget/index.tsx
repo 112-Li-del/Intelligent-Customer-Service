@@ -17,7 +17,7 @@ import {
 import { clx } from "@modules/common/components/ui"
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useParams, usePathname } from "next/navigation"
 import {
   FormEvent,
   KeyboardEvent,
@@ -88,22 +88,30 @@ const requestAssistantReply = async (
       query,
       countryCode,
       productHandle: product?.handle,
+      selectedVariantId: product?.variantId,
       purchasedHandles: product?.purchasedHandles,
       history,
     }),
   })
-  const data: { reply?: string; code?: string; products?: RecommendedProduct[] } = await response.json()
-  if (response.ok && data.reply) return { reply: data.reply, live: true, products: data.products }
+  const data: { reply?: string; code?: string; partial?: boolean; products?: RecommendedProduct[] } = await response.json()
+  if (response.ok && data.reply) return { reply: data.reply, live: !data.partial, products: data.products }
   if (data.code === "AI_NOT_CONFIGURED") {
     return { reply: `演示回复\n${getMockReply(query, product)}`, live: false }
   }
   throw new Error("Chat unavailable")
 }
 
-const AiChatConversation = ({ pathname }: { pathname: string }) => {
+const AiChatConversation = ({
+  pathname,
+  hideLauncher,
+}: {
+  pathname: string
+  hideLauncher: boolean
+}) => {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState("")
+  const [isLive, setIsLive] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [openedProduct, setOpenedProduct] = useState<AiChatProduct>()
   const [isCatalogInquiry, setIsCatalogInquiry] = useState(false)
@@ -129,7 +137,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
   const pendingRequests = useRef(0)
   const messageListRef = useRef<HTMLDivElement>(null)
   const isProductPage = pathname.includes("/products/")
-  const countryCode = pathname.split("/")[1] || ""
+  const { countryCode } = useParams<{ countryCode: string }>()
 
   const sendQuery = useCallback(
     (rawQuery: string, product?: AiChatProduct) => {
@@ -157,6 +165,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
             content: reply,
             products,
           }
+          setIsLive(live)
           if (live) {
             modelHistory.current = {
               handle: product?.handle,
@@ -167,6 +176,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
           }
           setMessages((current) => [...current, assistantMessage])
         } catch {
+          setIsLive(false)
           const message: ChatMessage = {
             id: nextMessageId.current++,
             role: "assistant",
@@ -231,7 +241,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
   }
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
       event.preventDefault()
       void sendQuery(input, productContext)
     }
@@ -239,23 +249,27 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="打开来财 AI 智能客服"
-        onClick={() => setIsOpen(true)}
-        className={clx(
-          "fixed right-4 z-[70] flex h-14 w-14 items-center justify-center gap-2 rounded-full bg-brand-navy text-white shadow-chat transition-all hover:-translate-y-0.5 hover:bg-brand-navy-light small:right-6 small:h-12 small:w-auto small:rounded-full small:px-5",
-          isProductPage ? "bottom-28 small:bottom-6" : "bottom-5 small:bottom-6"
-        )}
-      >
-        <span className="relative flex items-center justify-center">
-          <ChatBubbleLeftRight className="h-6 w-6" />
-          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 animate-soft-pulse rounded-full bg-brand-orange" />
-        </span>
-        <span className="hidden text-sm font-semibold small:inline">
-          来财 AI 客服
-        </span>
-      </button>
+      {!hideLauncher && (
+        <button
+          type="button"
+          aria-label="打开来财 AI 智能客服"
+          onClick={() => setIsOpen(true)}
+          className={clx(
+            "chat-launcher fixed right-4 z-[70] flex h-14 w-14 items-center justify-center gap-2 rounded-full bg-gradient-to-br from-brand-navy to-[#1E3A5F] text-white shadow-chat transition-transform motion-safe:hover:-translate-y-0.5 small:right-6 small:h-12 small:w-auto small:rounded-full small:px-5",
+            isProductPage ? "bottom-28 small:bottom-6" : "bottom-5 small:bottom-6"
+          )}
+        >
+          <span className="relative flex items-center justify-center">
+            <ChatBubbleLeftRight className="h-6 w-6" />
+            <span aria-hidden="true" className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-brand-orange">
+              <span className="absolute inset-0 rounded-full bg-brand-orange/60 motion-safe:animate-ping" />
+            </span>
+          </span>
+          <span className="hidden text-sm font-semibold small:inline">
+            <span aria-hidden="true">✨ </span>来财 AI 客服
+          </span>
+        </button>
+      )}
 
       {isOpen && (
         <section
@@ -263,15 +277,15 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
           aria-modal="false"
           aria-labelledby="ai-chat-title"
           className={clx(
-            "fixed inset-x-3 top-24 z-[80] flex animate-slide-up flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-chat small:inset-x-auto small:right-6 small:top-auto small:h-[min(680px,calc(100dvh-8rem))] small:w-[410px]",
+            "fixed inset-x-3 top-24 z-[80] flex animate-slide-up flex-col overflow-hidden glass-card rounded-2xl border-brand-orange/20 bg-[#FAFAF8] shadow-chat small:inset-x-auto small:right-6 small:top-auto small:h-[min(680px,calc(100dvh-8rem))] small:w-[410px]",
             isProductPage
               ? "bottom-40 small:bottom-24"
               : "bottom-24 small:bottom-24"
           )}
         >
-          <div className="flex items-center justify-between bg-brand-navy px-5 py-4 text-white">
+          <div className="flex items-center justify-between bg-gradient-to-r from-[#0D1B2A] to-[#1E3A5F] px-5 py-4 text-white">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-orange text-brand-navy">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-orange text-brand-navy ring-4 ring-brand-orange/20">
                 <Sparkles className="h-5 w-5" />
               </span>
               <div>
@@ -283,6 +297,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
                 </p>
               </div>
             </div>
+            {isLive && <span className="ml-auto mr-2 inline-flex items-center gap-1.5 text-xs text-white/80"><span className="h-2 w-2 rounded-full bg-[#2ECC71] motion-safe:animate-pulse" />在线</span>}
             <button
               type="button"
               aria-label="关闭 AI 智能客服"
@@ -327,7 +342,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
 
           <div
             ref={messageListRef}
-            className="min-h-0 flex-1 overflow-y-auto bg-[#F7F7F7] px-4 py-5"
+            className="min-h-0 flex-1 overflow-y-auto bg-[#FAF8F3] bg-[radial-gradient(#dfd8cc_0.8px,transparent_0.8px)] bg-[size:12px_12px] px-4 py-5"
             aria-live="polite"
           >
             <div className="flex flex-col gap-4">
@@ -335,10 +350,10 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
                 <div
                   key={message.id}
                   className={clx(
-                    "max-w-[86%] whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
+                    "max-w-[86%] whitespace-pre-line break-words rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
                     message.role === "assistant"
                       ? "self-start rounded-tl-sm border border-gray-100 bg-white text-brand-ink"
-                      : "self-end rounded-tr-sm bg-brand-navy text-white"
+                      : "self-end rounded-tr-sm bg-gradient-to-br from-brand-navy to-[#1E3A5F] text-white"
                   )}
                 >
                   {message.content}
@@ -346,7 +361,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
                     <Link
                       key={href}
                       href={href}
-                      className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:border-brand-orange"
+                      className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold hover:border-brand-orange/60 hover:bg-[#FFFBF5]"
                     >
                       <span>{title}</span>
                       <span className="shrink-0">{price ?? "查看商品"}</span>
@@ -370,13 +385,13 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
           </div>
 
           {messages.length === 1 && (
-            <div className="flex gap-2 overflow-x-auto border-t border-gray-100 bg-white px-4 py-3 no-scrollbar">
+            <div className="flex shrink-0 flex-wrap gap-2 border-t border-gray-100 bg-white px-4 py-3">
               {quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
                   onClick={() => void sendQuery(prompt, productContext)}
-                  className="shrink-0 rounded-full border border-gray-300 px-3.5 py-2 text-xs font-medium text-brand-ink hover:border-brand-orange hover:bg-[#FFF8EE]"
+                  className="max-w-full break-words rounded-full border border-brand-orange/30 bg-[#FFFBF5] px-3.5 py-2 text-xs font-medium text-brand-ink hover:border-brand-orange hover:bg-brand-orange/10"
                 >
                   {prompt}
                 </button>
@@ -388,7 +403,7 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
             onSubmit={handleSubmit}
             className="border-t border-gray-200 bg-white p-3"
           >
-            <div className="flex items-end gap-2 rounded-xl border border-gray-300 bg-white p-2">
+            <div className="flex items-end gap-2 rounded-xl border border-brand-orange/40 bg-white p-2 transition-shadow focus-within:border-brand-amber focus-within:ring-2 focus-within:ring-brand-orange/50">
               <label htmlFor="ai-chat-input" className="sr-only">
                 输入咨询内容
               </label>
@@ -400,19 +415,19 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
                 rows={1}
                 maxLength={500}
                 placeholder="输入你的问题，Enter 发送"
-                className="max-h-28 min-h-9 min-w-0 flex-1 resize-none rounded-md border-0 px-2 py-1.5 text-sm leading-6 placeholder:text-gray-400 focus-visible:ring-inset focus-visible:ring-offset-0"
+                className="max-h-28 min-h-9 min-w-0 flex-1 resize-none rounded-md border-0 px-2 py-1.5 text-sm leading-6 placeholder:text-gray-500 focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <button
                 type="submit"
                 aria-label="发送消息"
                 disabled={!input.trim() || isLoading}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange text-brand-navy transition-colors hover:bg-brand-orange-hover disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-orange to-brand-action text-brand-navy shadow-[0_2px_8px_rgba(254,189,105,0.5)] hover:to-brand-action-hover disabled:cursor-not-allowed disabled:bg-gray-200 disabled:bg-none disabled:shadow-none disabled:text-gray-400"
               >
                 <ArrowRight className="h-5 w-5" />
               </button>
             </div>
-            <p className="mt-2 px-1 text-[10px] leading-4 text-gray-400">
-              AI 建议仅供参考；价格、库存、配送和退换政策请以商城页面为准。
+            <p className="mt-2 px-1 text-[10px] leading-4 text-gray-500">
+              AI 可以帮你挑选商品。下单前，请以商城页面的价格、库存、配送和退换政策为准。
             </p>
           </form>
         </section>
@@ -421,8 +436,15 @@ const AiChatConversation = ({ pathname }: { pathname: string }) => {
   )
 }
 
-export default function AiChatWidget() {
+export default function AiChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
   const pathname = usePathname()
   const conversationKey = /\/(?:products|order)\//.test(pathname) ? pathname : "storefront"
-  return <AiChatConversation key={conversationKey} pathname={pathname} />
+  const isLoginPage = /\/account\/?$/.test(pathname)
+  return (
+    <AiChatConversation
+      key={conversationKey}
+      pathname={pathname}
+      hideLauncher={isLoginPage && !isLoggedIn}
+    />
+  )
 }

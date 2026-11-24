@@ -19,10 +19,14 @@ const isReview = (value: unknown): value is PreviewReview => {
 
 export const getPreviewProductDetails = (metadata?: Record<string, unknown> | null) => {
   const details = metadata?.preview_details as { specs?: unknown; reviews?: unknown } | undefined
-  const specs =
-    details?.specs && typeof details.specs === "object" && !Array.isArray(details.specs)
-      ? Object.entries(details.specs).filter((entry): entry is [string, string] => typeof entry[1] === "string")
-      : []
+  const rawSpecs = details?.specs
+  const entries: unknown[] = Array.isArray(rawSpecs)
+    ? rawSpecs
+    : rawSpecs && typeof rawSpecs === "object" ? Object.entries(rawSpecs) : []
+  const specs = entries.filter((entry): entry is [string, string] =>
+    Array.isArray(entry) && entry.length === 2 &&
+    entry.every((part) => typeof part === "string" && part.trim().length > 0)
+  )
   const reviews = Array.isArray(details?.reviews) ? details.reviews.filter(isReview) : []
   return { specs, reviews }
 }

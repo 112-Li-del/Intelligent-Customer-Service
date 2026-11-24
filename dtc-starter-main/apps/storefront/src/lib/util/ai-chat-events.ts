@@ -4,6 +4,7 @@ export type AiChatProduct = {
   name: string
   handle?: string | null
   thumbnail?: string | null
+  variantId?: string
   size?: string
   price?: string
   description?: string | null

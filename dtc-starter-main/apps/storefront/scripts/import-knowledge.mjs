@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { readFileSync, readdirSync } from "node:fs"
 import pg from "pg"
-import { getEmbeddingProvider, keywordTokens } from "../src/lib/ai/knowledge-input.mjs"
+import { getEmbeddingProvider, keywordTokens, requestEmbeddings } from "../src/lib/ai/knowledge-input.mjs"
 
 const knowledge = new URL("../../../knowledge-base/", import.meta.url)
 const textOnly = process.argv.includes("--text-only")
@@ -39,7 +39,7 @@ function readDocuments() {
   return documents
 }
 
-async function resolveProductIds(documents) {
+async function resolveProductIds(documents, allowUnavailable = false) {
   const baseUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL?.trim() || "http://localhost:9000"
   const key = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY?.trim()
   if (!key) throw new Error("Medusa publishable API key is required")
@@ -57,6 +57,7 @@ async function resolveProductIds(documents) {
     if (!response.ok) throw new Error(`Medusa catalog lookup failed (HTTP ${response.status})`)
     const { products } = await response.json()
     const product = products?.find((item) => item.handle === handle)
+    if (!product?.id && allowUnavailable) continue
     if (!product?.id) throw new Error(`Unavailable Medusa product: ${handle}`)
     results.set(handle, product.id)
   }
@@ -172,7 +173,11 @@ async function importText(client, chunks) {
       `, [chunk.id, chunk.file, chunk.title, chunk.heading, chunk.size, chunk.content, chunk.hash, chunk.keywords,
         chunk.productId, chunk.handle, chunk.categories, chunk.region, chunk.locale, chunk.source, chunk.updatedAt])
     }
-    await client.query("delete from laicai_knowledge.chunks where not (id = any($1::text[]))", [chunks.map(({ id }) => id)])
+    await client.query(
+      "delete from laicai_knowledge.chunks where document_path not like 'catalog/%' and not (id = any($1::text[]))",
+      [chunks.map(({ id }) => id)],
+    )
+    await client.query(readFileSync(new URL("./catalog-knowledge.sql", import.meta.url), "utf8"))
     await client.query("commit")
   } catch (error) {
     await client.query("rollback")
@@ -181,37 +186,24 @@ async function importText(client, chunks) {
 }
 
 async function importEmbeddings(client, provider) {
-  const identity = [provider.url.href, provider.model]
+  const [probe] = await requestEmbeddings(provider, "商品规格", AbortSignal.timeout(30000))
+  const identity = [provider.url.href, provider.model, probe.length]
   const { rows } = await client.query(`
-    select id, content, content_hash from laicai_knowledge.chunks
-    where embedding is null or (embedding_provider, embedding_model) is distinct from ($1::text, $2::text)
+    select id, content, content_hash, product_id, product_handle from laicai_knowledge.chunks chunk
+    where embedding is null or (rtrim(embedding_provider, '/'), embedding_model, embedding_dimensions)
+      is distinct from (rtrim($1::text, '/'), $2::text, $3::int)
     order by id
   `, identity)
+  const catalogHandles = [...new Set(rows.filter(({ id }) => id.startsWith("catalog:")).map(({ product_handle }) => product_handle))]
+  const visible = await resolveProductIds(catalogHandles.map((product_handle) => ({ metadata: { product_handle } })), true)
+  const pending = rows.filter(({ id, product_handle, product_id }) => !id.startsWith("catalog:") || visible.get(product_handle) === product_id)
   const generated = []
-  let dimensions
-  for (let start = 0; start < rows.length; start += 8) {
-    const batch = rows.slice(start, start + 8)
-    const response = await fetch(provider.url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: provider.model,
-        input: batch.map(({ content }) => content),
-        encoding_format: "float",
-      }),
-      redirect: "error",
-      signal: AbortSignal.timeout(30_000),
-    })
-    if (!response.ok) throw new Error(`Embedding provider returned HTTP ${response.status}`)
-    const data = (await response.json()).data
-    if (!Array.isArray(data) || data.length !== batch.length) throw new Error("Embedding response count mismatch")
-    const vectors = new Map(data.map(({ index, embedding }) => [index, embedding]))
+  const dimensions = probe.length
+  for (let start = 0; start < pending.length; start += 8) {
+    const batch = pending.slice(start, start + 8)
+    const vectors = await requestEmbeddings(provider, batch.map(({ content }) => content), AbortSignal.timeout(30_000))
     for (const [index, row] of batch.entries()) {
-      const vector = vectors.get(index)
-      if (!Array.isArray(vector) || !vector.length || vector.some((value) => !Number.isFinite(Math.fround(value)) || typeof value !== "number")) {
-        throw new Error("Invalid Embedding vector")
-      }
-      dimensions ??= vector.length
+      const vector = vectors[index]
       if (vector.length !== dimensions) throw new Error("Inconsistent Embedding dimensions")
       generated.push({ ...row, vector })
     }
@@ -221,19 +213,12 @@ async function importEmbeddings(client, provider) {
   await client.query("begin")
   try {
     await client.query("select pg_advisory_xact_lock(hashtext('laicai_knowledge_import'))")
-    const existing = await client.query(`
-      select distinct embedding_dimensions from laicai_knowledge.chunks
-      where (embedding_provider, embedding_model) = ($1::text, $2::text)
-    `, identity)
-    if (existing.rows.some((row) => row.embedding_dimensions !== dimensions)) {
-      throw new Error("Embedding model returned a different dimension from stored vectors")
-    }
     for (const { id, content_hash, vector } of generated) {
       const updated = await client.query(`
         update laicai_knowledge.chunks
         set embedding = $3, embedding_provider = $4, embedding_model = $5
         where id = $1 and content_hash = $2
-      `, [id, content_hash, vector, ...identity])
+      `, [id, content_hash, vector, provider.url.href, provider.model])
       if (updated.rowCount !== 1) throw new Error("Knowledge changed while embeddings were being generated")
     }
     await client.query("commit")
@@ -249,14 +234,18 @@ async function main() {
   if (!databaseUrl || !["localhost", "127.0.0.1", "[::1]"].includes(new URL(databaseUrl).hostname)) {
     throw new Error("A local PostgreSQL DATABASE_URL is required")
   }
-  const documents = readDocuments()
-  const chunks = buildChunks(documents, await resolveProductIds(documents))
-  if (!chunks.length) throw new Error("No knowledge chunks found")
   const client = new pg.Client({ connectionString: databaseUrl, connectionTimeoutMillis: 5000 })
   await client.connect()
   try {
-    await importText(client, chunks)
-    console.log(`Imported ${chunks.length} chunks from ${documents.length} approved documents.`)
+    if (process.argv.includes("--refresh-catalog")) {
+      await client.query(readFileSync(new URL("./catalog-knowledge.sql", import.meta.url), "utf8"))
+    } else {
+      const documents = readDocuments()
+      const chunks = buildChunks(documents, await resolveProductIds(documents))
+      if (!chunks.length) throw new Error("No knowledge chunks found")
+      await importText(client, chunks)
+      console.log(`Imported ${chunks.length} chunks from ${documents.length} approved documents.`)
+    }
     const provider = textOnly ? null : getEmbeddingProvider()
     if (provider) console.log(`Stored ${await importEmbeddings(client, provider)} new embeddings.`)
     else console.log("Embedding step skipped.")

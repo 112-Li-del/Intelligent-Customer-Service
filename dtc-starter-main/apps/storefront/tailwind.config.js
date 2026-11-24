@@ -22,15 +22,17 @@ module.exports = {
       colors: {
         brand: {
           navy: "#131921",
-          "navy-light": "#232F3E",
+          "navy-light": "#1E2D3D",
           slate: "#37475A",
           orange: "#FEBD69",
-          "orange-hover": "#F3A847",
+          "orange-hover": "#E09010",
           yellow: "#FFD814",
-          "yellow-hover": "#F7CA00",
+          "yellow-hover": "#E09010",
           action: "#FFA41C",
-          "action-hover": "#FA8900",
-          canvas: "#EAEDED",
+          "action-hover": "#E09010",
+          amber: "#E8A020",
+          "amber-light": "#FFF5E0",
+          canvas: "#F5F0E8",
           ink: "#0F1111",
         },
         grey: {
@@ -53,12 +55,15 @@ module.exports = {
         base: "4px",
         rounded: "8px",
         large: "16px",
+        xl: "16px",
+        "2xl": "24px",
         circle: "9999px",
       },
       boxShadow: {
-        card: "0 1px 2px rgba(15, 17, 17, 0.08)",
-        "card-hover": "0 8px 24px rgba(15, 17, 17, 0.12)",
-        chat: "0 20px 60px rgba(15, 17, 17, 0.22)",
+        card: "0 2px 12px rgba(45, 32, 20, 0.06)",
+        "card-warm": "0 4px 20px rgba(180, 120, 20, 0.08)",
+        "card-hover": "0 8px 30px rgba(45, 32, 20, 0.12)",
+        chat: "0 24px 80px rgba(15, 17, 17, 0.28)",
       },
       maxWidth: {
         "8xl": "100rem",
@@ -76,7 +81,11 @@ module.exports = {
         "3xl": "2rem",
       },
       fontFamily: {
+        serif: ["Noto Serif SC", "Songti SC", "STSong", "SimSun", "serif"],
         sans: [
+          "PingFang SC",
+          "Microsoft YaHei",
+          "Noto Sans CJK SC",
           "Inter",
           "-apple-system",
           "BlinkMacSystemFont",

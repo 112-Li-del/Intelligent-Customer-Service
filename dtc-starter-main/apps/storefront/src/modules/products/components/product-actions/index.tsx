@@ -77,6 +77,7 @@ export default function ProductActions({
     }
     return {
       name: product.title,
+      variantId,
       handle: product.handle,
       thumbnail: product.thumbnail,
       description: product.description,

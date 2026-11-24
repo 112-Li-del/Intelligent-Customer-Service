@@ -1,7 +1,19 @@
+.atmosphere {
+  background-image: radial-gradient(ellipse at 66% 45%, rgba(255, 200, 80, 0.15), transparent 55%);
+}
+
+.atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23grain)' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
+}
+
 .entering,
 .leaving {
   --slide-offset: 100%;
-  animation-duration: 450ms;
+  animation-duration: 400ms;
   animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
   animation-fill-mode: both;
 }

@@ -17,7 +17,7 @@ const slides = [
     cta: "立即逛好物",
     href: "/store",
     background:
-      "linear-gradient(115deg, #131921 0%, #243B53 52%, #315A70 100%)",
+      "linear-gradient(135deg, #0D1B2A 0%, #1A3350 40%, #2E5F7A 75%, #3D7A9A 100%)",
   },
   {
     eyebrow: "本周上新 · 新鲜感正当时",
@@ -27,7 +27,7 @@ const slides = [
     cta: "查看新品",
     href: "/#new-products",
     background:
-      "linear-gradient(115deg, #3B2C20 0%, #8B5E34 52%, #C48B4A 100%)",
+      "linear-gradient(135deg, #2A1A0D 0%, #6B3D1A 40%, #A0602A 75%, #D4894A 100%)",
   },
   {
     eyebrow: "来财 AI · 你的专属选品助手",
@@ -37,7 +37,7 @@ const slides = [
     cta: "开始智能导购",
     query: "你好，我想选购商品，请先问我几个关键问题来了解需求。",
     background:
-      "linear-gradient(115deg, #17233C 0%, #3E3568 52%, #74558D 100%)",
+      "linear-gradient(135deg, #150E2A 0%, #2D2050 40%, #5A3E80 75%, #8060A8 100%)",
   },
 ]
 
@@ -74,21 +74,23 @@ const HeroSlide = ({
       inert={isLeaving}
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-30"
+        className={`${styles.atmosphere} pointer-events-none absolute inset-0`}
         aria-hidden="true"
       >
         <div className="absolute -right-20 -top-40 h-[520px] w-[520px] rounded-full border border-white/20" />
         <div className="absolute -right-4 -top-24 h-[380px] w-[380px] rounded-full border border-white/20" />
-        <div className="absolute bottom-10 left-[45%] h-24 w-24 rotate-12 rounded-3xl bg-white/10" />
+        <svg viewBox="0 0 180 180" fill="none" className="absolute -bottom-14 left-[16%] h-[180px] w-[180px] text-white/10">
+          <path d="M45 13h90l44 77-44 77H45L1 90Z" stroke="currentColor" />
+        </svg>
       </div>
 
       <div className="content-container relative flex h-full flex-col justify-center gap-4 pb-28 pt-4 small:flex-row small:items-center small:justify-between small:gap-8 small:pb-32">
         <div className="relative z-10 max-w-2xl">
           <p className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-orange small:text-sm">
-            <span className="h-px w-8 bg-brand-orange" />
+            <span className="h-px w-9 bg-gradient-to-r from-brand-orange to-transparent" />
             {slide.eyebrow}
           </p>
-          <h1 className="whitespace-pre-line text-3xl font-bold leading-[1.15] tracking-tight small:text-4xl xl:text-5xl">
+          <h1 className="whitespace-pre-line font-serif text-3xl font-bold leading-[1.1] tracking-[-0.02em] small:text-5xl xl:text-6xl">
             {slide.title}
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-7 text-white/80 small:text-base">
@@ -98,14 +100,14 @@ const HeroSlide = ({
             {slide.href ? (
               <LocalizedClientLink
                 href={slide.href}
-                className="rounded-full bg-brand-yellow px-7 py-3 text-sm font-bold text-brand-ink shadow-lg transition-all hover:-translate-y-0.5 hover:bg-brand-yellow-hover"
+                className="hero-cta"
               >
                 {slide.cta}
               </LocalizedClientLink>
             ) : (
               <AiChatTrigger
                 query={slide.query}
-                className="rounded-full bg-brand-yellow px-7 py-3 text-sm font-bold text-brand-ink shadow-lg transition-all hover:-translate-y-0.5 hover:bg-brand-yellow-hover"
+                className="hero-cta"
               >
                 {slide.cta}
               </AiChatTrigger>
@@ -119,10 +121,10 @@ const HeroSlide = ({
         {product && (
           <LocalizedClientLink
             href={`/products/${product.handle}`}
-            className="group z-10 flex w-full min-w-0 items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-2 hover:bg-white/20 small:w-[220px] small:shrink-0 small:flex-col small:items-stretch small:p-3 xl:w-[300px]"
+            className="group z-10 flex w-full min-w-0 items-center gap-3 rounded-2xl border border-white/25 bg-white/15 p-2 shadow-card backdrop-blur-md transition-colors hover:bg-white/[0.22] small:w-[220px] small:shrink-0 small:flex-col small:items-stretch small:p-3 xl:w-[300px]"
           >
-            <div className="relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-lg bg-[#F7F8F8] small:aspect-[4/3] small:w-full">
-              <Image src={product.image} alt="" fill sizes="(max-width: 1023px) 72px, 280px" className="scale-125 object-contain transition-transform motion-safe:group-hover:scale-[1.32]" />
+            <div className="relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-lg bg-[#FAF7F1] small:aspect-[4/3] small:w-full">
+              <Image src={product.image} alt="" fill loading="eager" sizes="(max-width: 1023px) 72px, 280px" className="scale-125 object-contain transition-transform motion-safe:group-hover:scale-[1.32]" />
             </div>
             <div className="min-w-0 small:px-1">
               <p className="mb-1 flex items-center gap-1 text-xs font-semibold text-brand-orange">
@@ -215,7 +217,7 @@ const Hero = ({ products }: { products: HeroProduct[] }) => {
         type="button"
         onClick={() => setCarousel((current) => stepCarousel(current, -1))}
         aria-label="上一张活动横幅"
-        className="absolute bottom-[100px] left-[calc(50%-76px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
+        className="absolute bottom-[100px] left-[calc(50%-90px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
@@ -223,7 +225,7 @@ const Hero = ({ products }: { products: HeroProduct[] }) => {
         type="button"
         onClick={() => setCarousel((current) => stepCarousel(current, 1))}
         aria-label="下一张活动横幅"
-        className="absolute bottom-[100px] right-[calc(50%-76px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
+        className="absolute bottom-[100px] right-[calc(50%-90px)] z-10 hidden rounded-full bg-black/20 p-1.5 text-white hover:bg-black/40 small:block"
       >
         <ChevronRight className="h-6 w-6" />
       </button>
@@ -244,10 +246,10 @@ const Hero = ({ products }: { products: HeroProduct[] }) => {
                     direction: index > current.activeIndex ? 1 : -1,
                   }
             ))}
-            className={`h-1.5 rounded-full transition-all ${
+            className={`h-1.5 rounded-full transition-all duration-300 ${
               index === activeIndex
-                ? "w-8 bg-brand-orange"
-                : "w-2 bg-white/50 hover:bg-white"
+                ? "w-10 bg-gradient-to-r from-brand-orange to-brand-amber"
+                : "w-2 bg-white opacity-50 hover:opacity-100"
             }`}
           />
         ))}

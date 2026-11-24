@@ -34,14 +34,14 @@ export default function ProductRail({
       className="content-container scroll-mt-32"
       aria-labelledby={`${id}-title`}
     >
-      <div className="store-card overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-5 xsmall:flex-row xsmall:items-center xsmall:justify-between small:px-7">
+      <div className="store-card overflow-visible transition-shadow duration-300 hover:shadow-card-hover">
+        <div className="flex flex-col gap-4 rounded-t-xl border-b border-[#EDE8DF] bg-gradient-to-r from-[#FAFAF8] to-white px-5 py-5 xsmall:flex-row xsmall:items-center xsmall:justify-between small:px-7">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#B12704]" />
+              <Sparkles className="h-5 w-5 text-brand-amber" />
               <h2
                 id={`${id}-title`}
-                className="text-xl font-bold text-brand-ink small:text-2xl"
+                className="font-serif text-xl font-bold tracking-[-0.01em] text-brand-ink small:text-2xl"
               >
                 {title}
               </h2>
@@ -52,23 +52,25 @@ export default function ProductRail({
           </div>
           <LocalizedClientLink
             href={href}
-            className="flex w-fit shrink-0 items-center gap-1.5 text-sm font-semibold text-[#007185] hover:text-[#C7511F] hover:underline"
+            className="group flex w-fit shrink-0 items-center gap-1.5 text-sm font-semibold text-[#86511B] hover:text-[#C7511F] hover:underline"
           >
             查看全部
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-[3px]" />
           </LocalizedClientLink>
         </div>
 
-        <ul className={`flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 p-4 small:scroll-px-6 small:p-6 ${horizontal ? "" : "no-scrollbar small:grid small:grid-cols-3 small:overflow-visible medium:grid-cols-4"}`}>
-          {products.map((product) => (
-            <li
-              key={product.id}
-              className={`w-[64vw] max-w-[260px] shrink-0 snap-start xsmall:w-[42vw] ${horizontal ? "small:w-[220px]" : "small:w-auto small:max-w-none"}`}
-            >
-              <ProductPreview product={product} region={region} isFeatured={isFeatured} />
-            </li>
-          ))}
-        </ul>
+        <div className={`rail-edges relative ${horizontal ? "" : "small:before:hidden small:after:hidden"}`}>
+          <ul className={`no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 p-4 small:scroll-px-6 small:p-6 ${horizontal ? "" : "small:grid small:grid-cols-3 small:overflow-visible medium:grid-cols-4"}`}>
+            {products.map((product) => (
+              <li
+                key={product.id}
+                className={`w-[64vw] max-w-[260px] shrink-0 snap-start xsmall:w-[42vw] ${horizontal ? "small:w-[220px]" : "small:w-auto small:max-w-none"}`}
+              >
+                <ProductPreview product={product} region={region} isFeatured={isFeatured} />
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
   )

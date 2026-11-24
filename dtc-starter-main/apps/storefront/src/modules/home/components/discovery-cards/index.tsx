@@ -23,7 +23,7 @@ const ProductThumb = ({ product }: { product: HttpTypes.StoreProduct }) => {
   const label = categoryLabels[product.handle] || product.title
 
   return (
-    <LocalizedClientLink href={`/products/${product.handle}`} className="group min-w-0 rounded-md bg-[#F7F8F8] p-2">
+    <LocalizedClientLink href={`/products/${product.handle}`} className="group min-w-0 rounded-lg bg-[#F7F4EF] p-2 transition-shadow hover:ring-2 hover:ring-brand-orange/40">
       <div className="relative aspect-[4/3] overflow-hidden rounded">
       {image ? (
         <Image
@@ -51,10 +51,10 @@ const CardHeading = ({ title }: { title: string }) => (
 const CardLink = ({ href, children }: { href: string; children: string }) => (
   <LocalizedClientLink
     href={href}
-    className="mt-auto flex w-fit items-center gap-1.5 pt-5 text-sm font-semibold text-[#007185] hover:text-[#C7511F] hover:underline"
+    className="group mt-auto flex w-fit items-center gap-1.5 pt-5 text-sm font-semibold text-[#86511B] hover:text-[#C7511F] hover:underline"
   >
     {children}
-    <ArrowRight className="h-4 w-4" />
+    <ArrowRight className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-1" />
   </LocalizedClientLink>
 )
 
@@ -67,7 +67,7 @@ const DiscoveryCards = ({ products, newestProducts, collections }: DiscoveryCard
       aria-label="场景导购"
     >
       <div className="grid grid-cols-1 gap-5 xsmall:grid-cols-2 xl:grid-cols-4">
-        <article className="store-card flex min-h-[340px] flex-col p-5 transition-shadow hover:shadow-card-hover">
+        <article className="discovery-card border border-white/70 bg-gradient-to-b from-white to-[#FDFAF5] backdrop-blur-sm">
           <CardHeading title="潮流服饰精选" />
           <p className="mt-1 text-xs leading-5 text-gray-500">
             从日常基础款，到值得尝试的新搭配
@@ -88,8 +88,11 @@ const DiscoveryCards = ({ products, newestProducts, collections }: DiscoveryCard
           </CardLink>
         </article>
 
-        <article className="store-card flex min-h-[340px] flex-col p-5 transition-shadow hover:shadow-card-hover">
-          <CardHeading title="新品尖货速递" />
+        <article className="discovery-card border border-white/70 bg-gradient-to-b from-white to-[#FDFAF5] backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <CardHeading title="新品尖货速递" />
+            <span className="rounded-full bg-[#AC3529] px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-white">NEW</span>
+          </div>
           <p className="mt-1 text-xs leading-5 text-gray-500">
             新上架商品集中看，快速找到新鲜感
           </p>
@@ -101,14 +104,14 @@ const DiscoveryCards = ({ products, newestProducts, collections }: DiscoveryCard
           <CardLink href="/#new-products">逛逛本周新品</CardLink>
         </article>
 
-        <article className="store-card flex min-h-[340px] flex-col overflow-hidden p-5 transition-shadow hover:shadow-card-hover">
+        <article className="discovery-card overflow-hidden border border-white/70 bg-white/95 backdrop-blur-sm">
           <CardHeading title="预算友好清单" />
           <p className="mt-1 text-xs leading-5 text-gray-500">
             先看需求，再看价格，买得清楚也买得合适
           </p>
-          <div className="relative mt-5 flex-1 overflow-hidden rounded-lg bg-gradient-to-br from-[#FFF5E4] to-[#FDE1B6] p-5">
-            <div className="absolute -bottom-10 -right-8 h-36 w-36 rounded-full border-[22px] border-white/40" />
-            <p className="relative text-xs font-semibold uppercase tracking-[0.18em] text-[#9A5B13]">
+          <div className="relative mt-5 flex-1 overflow-hidden rounded-lg bg-gradient-to-br from-[#FFF8EC] to-[#FDDFA0] p-5">
+            <div className="absolute -bottom-10 -right-8 h-36 w-36 rounded-full border-[22px] border-brand-orange/25" />
+            <p className="relative text-xs font-semibold uppercase tracking-[0.18em] text-gradient-amber [--amber-start:#8a5214] [--amber-end:#9b5900]">
               SMART CHOICES
             </p>
             <p className="relative mt-3 max-w-[180px] text-2xl font-bold leading-9 text-brand-navy">
@@ -124,11 +127,12 @@ const DiscoveryCards = ({ products, newestProducts, collections }: DiscoveryCard
           <CardLink href="/store">按需求挑选好物</CardLink>
         </article>
 
-        <article className="relative flex min-h-[340px] flex-col overflow-hidden rounded-lg border border-brand-navy bg-brand-navy p-5 text-white shadow-card transition-shadow hover:shadow-card-hover">
+        <article className="discovery-card relative overflow-hidden bg-gradient-to-br from-[#0D1B2A] via-brand-navy to-brand-navy-light text-white">
+          <div aria-hidden="true" className="discovery-corners pointer-events-none absolute inset-2 opacity-30" />
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-brand-orange/10 blur-2xl" />
           <div className="relative flex items-start justify-between">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-orange text-brand-navy">
-              <Sparkles className="h-6 w-6" />
+              <Sparkles className="sparkle-shine h-6 w-6" />
             </span>
             <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] tracking-wider text-brand-orange">
               AI SELECT
@@ -154,7 +158,7 @@ const DiscoveryCards = ({ products, newestProducts, collections }: DiscoveryCard
           </ul>
           <AiChatTrigger
             query="你好，请帮我挑选商品。先通过几个问题了解我的使用场景、预算和偏好。"
-            className="relative mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-brand-orange py-3 text-sm font-bold text-brand-navy hover:bg-brand-orange-hover"
+            className="relative mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-brand-orange py-3 text-sm font-bold text-brand-navy shadow-[0_0_20px_rgba(254,189,105,0.35)] hover:bg-brand-orange-hover"
           >
             开始专属导购
             <ArrowRight className="h-4 w-4" />

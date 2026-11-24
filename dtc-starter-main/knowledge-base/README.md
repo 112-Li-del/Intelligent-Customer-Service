@@ -10,7 +10,7 @@
 
 `AI_RERANK_URL`、`AI_RERANK_API_KEY`、`AI_RERANK_MODEL` 用于候选切片精排。`AI_RERANK_URL` 填服务商给出的完整重排接口地址，例如 `https://api.example.com/v1/rerank`。Embedding 不可用时使用关键词结果，重排不可用时使用原检索排序。
 
-`AI_KNOWLEDGE_DATABASE_URL` 指向已导入知识库的 PostgreSQL，放在商城前端的 `.env.local` 中。前端服务只需对 `laicai_knowledge` schema 和其中两张表的读取权限。本地开发也可以从商城前端目录把后端的 `DATABASE_URL` 传给商城进程。
+`AI_KNOWLEDGE_DATABASE_URL` 指向与 Medusa 商品表同库的 PostgreSQL，放在商城前端的 `.env.local` 中。前端服务读取 `laicai_knowledge` 中的切片和关系表，并可更新切片表的向量列以补齐向量。本地开发也可以从商城前端目录把后端的 `DATABASE_URL` 传给商城进程。
 
 ```powershell
 $env:DATABASE_URL = node --env-file=../backend/.env -p 'process.env.DATABASE_URL'
@@ -35,7 +35,13 @@ pnpm run dev
 node --env-file=../backend/.env --env-file=.env.local ./scripts/import-knowledge.mjs
 ```
 
+本地开发可在前台 `.env.local` 设置 `AI_KNOWLEDGE_USE_LOCAL_MEDUSA=true`，复用本机后端数据库连接。生产环境显式配置 `AI_KNOWLEDGE_DATABASE_URL`。模型或维度变更后可用上面的命令追加 `--refresh-catalog`，刷新商品切片并补齐不兼容的向量，同时保留现有审核文档及搭配关系。
+
 使用 `--text-only` 跳过向量请求。导入脚本把正文和关键词索引写入 `laicai_knowledge.chunks`，把[搭配与场景关系](./product-relations.json)写入 `laicai_knowledge.product_relations`。同一切片按稳定 ID 更新。再次导入只为缺少向量、正文变更或模型切换的切片请求 Embedding。当前使用 PostgreSQL `real[]` 保存向量并计算余弦相似度。
+
+每个数据库通过上述导入命令安装一次自动同步。商品发布或改名、修改描述、材质和公开规格时，PostgreSQL 会同步更新该商品的知识切片和关键词索引。商品下架或删除会撤下自动切片。同一商品的审核文档和目录资料共同参与检索，回答时还会核对实时商品资料。价格和库存继续查 Medusa，搭配关系由已审核的关系文件提供。
+
+导入时会补齐已上架商品的向量。之后新商品的关键词索引在发布时即可查询，有咨询命中该商品后，客服会在回复完成后补齐缺失的向量。Embedding 服务异常时关键词检索仍可用，后续咨询或重新运行导入命令可重试。
 
 导入并启动后，在原客服弹窗中可以试问：
 

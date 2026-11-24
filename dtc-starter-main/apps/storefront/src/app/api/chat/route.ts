@@ -1,10 +1,14 @@
 import { resolveChatIntent } from "@lib/ai/chat-intent"
-import { findRelations, searchKnowledge } from "@lib/ai/knowledge"
+import { backfillCatalogEmbeddings, findRelations, loadCatalogNames, rerankKnowledge, searchKnowledge } from "@lib/ai/knowledge"
 import { providerUrl } from "@lib/ai/knowledge-input.mjs"
 import { listProducts } from "@lib/data/products"
 import { getApparelSizeGuide } from "@lib/util/apparel-size-guide"
 import { convertToLocale } from "@lib/util/money"
 import { getPreviewProductDetails } from "@lib/util/preview-product-details"
+import { isLiveOnly, selectVariants } from "@lib/ai/variant-selection"
+import { DEFAULT_COUNTRY_CODE } from "@lib/util/site"
+import { getRegion } from "@lib/data/regions"
+import { after } from "next/server"
 
 const SYSTEM_PROMPT = [
   "你是来财商城的中文客服。直接、简洁地用纯文本回答购物问题，不使用 Markdown。",
@@ -13,7 +17,8 @@ const SYSTEM_PROMPT = [
   "保留资料里的数值、单位和限制条件。可以提供通用建议，但要说明是一般建议。",
   "只有同一商品的对应规格才能作为证据。区分 USB-C 和 USB-A、输入和输出、不同尺码以及使用条件。商品资料互相矛盾或未覆盖的问题请说暂未查到。不要从聊天历史提取商品事实。",
   "只回答最后一条问题，用历史记录理解指代。追问一个尺码时只给该尺码，未问配送时不展开配送细节。",
-  "服务端会另外展示实时价格、库存和搭配建议。不要自行补充这些内容，也不要推测用户的订单或购买记录。",
+  "resolvedProductNames 是商城匹配到的商品全称。简称匹配时直接用全称作答，不把简称解释成标准版。此前的用户问题只用于理解指代，不需要再次回答。",
+  "逐项回答本轮问题。服务端将附上实时结果，结合这些结果分析性价比和使用场景，不重复报价单。只有实时结果已完整回答全部问题时只输出 [ANSWERED]。订单状态需用户查看我的订单。缺少某项依据只说明该项，继续回答其余各项。",
   "尺码表中的推荐身高和体重是选码参考，胸围等成衣尺寸不要当作人体尺寸。按同一尺码行引用参数，不保证实际合身。",
 ].join("\n")
 
@@ -40,14 +45,22 @@ function getProvider() {
 
 async function loadProduct(countryCode: string, handles: string[]) {
   if (!handles.length) return []
-  const { response } = await listProducts({
+  const fields = "id,handle,title,thumbnail,description,material,weight,length,width,height,metadata,*options,*options.values,*variants,*variants.options,*variants.calculated_price"
+  const channel = process.env.MEDUSA_SALES_CHANNEL_ID?.trim()
+  const fetchProducts = (withInventory: boolean) => listProducts({
     countryCode,
     fresh: true,
     queryParams: {
       handle: handles,
       limit: handles.length,
-      fields: "id,handle,title,thumbnail,description,material,metadata,*variants,*variants.calculated_price,+variants.inventory_quantity",
+      ...(channel ? { sales_channel_id: [channel] } : {}),
+      fields: withInventory ? fields + ",+variants.inventory_quantity" : fields,
     },
+  })
+  const { response } = await fetchProducts(true).catch((error: unknown) => {
+    if (!(error instanceof Error) || !error.message.includes("Inventory availability cannot be calculated")) throw error
+    console.warn("Chat inventory requires a single storefront sales channel")
+    return fetchProducts(false)
   })
   return handles.flatMap((handle) => response.products.find((product) => product.handle === handle) ?? [])
 }
@@ -60,7 +73,12 @@ function productFacts(product: Product) {
     name: product.title.slice(0, 250),
     description: product.description?.slice(0, 1500),
     material: product.material?.slice(0, 400),
-    specs: specs.slice(0, 12).map(([name, detail]) => [name.slice(0, 60), detail.slice(0, 500)]),
+    options: product.options?.map((option) => ({
+      name: option.title,
+      values: option.values?.map(({ value }) => value),
+    })),
+    specs,
+    dimensions: { weightGrams: product.weight, lengthMm: product.length, widthMm: product.width, heightMm: product.height },
     sizeGuide: getApparelSizeGuide(product.handle),
   }
 }
@@ -73,23 +91,36 @@ function availability(variant: NonNullable<Product["variants"]>[number]) {
   return "库存暂未查到"
 }
 
-function variantPrice(variant: NonNullable<Product["variants"]>[number]) {
+function variantPrice(variant: NonNullable<Product["variants"]>[number], currency: string) {
   const price = variant.calculated_price
-  if (!price?.currency_code || typeof price.calculated_amount !== "number") return null
+  if (!price?.currency_code || price.currency_code.toLowerCase() !== currency || typeof price.calculated_amount !== "number") return null
   return convertToLocale({ amount: price.calculated_amount, currency_code: price.currency_code })
 }
 
-function liveReply(products: Product[], price: boolean, stock: boolean) {
+function liveReply(products: Product[], query: string, currency: string, price: boolean, stock: boolean, selectedVariantId?: string) {
   if (!products.length) return "暂未查到该商品的实时信息，请提供商品名称或从商品详情页发起咨询。"
   return products.map((product) => {
-    const variants = (product.variants ?? []).slice(0, 12)
+    const all = product.variants ?? []
+    const selected = all.find(v => v.id === selectedVariantId)
+    const matches = selectVariants(query, all)
+    const variants = selected && matches.length === all.length && !/各|所有|全部|分别|哪些/.test(query)
+      ? [selected] : matches
     const lines = variants.map((variant) => [
       variant.title,
-      price ? variantPrice(variant) ?? "价格暂未查到" : null,
+      price ? variantPrice(variant, currency) ?? `当前地区暂无可确认的 ${currency.toUpperCase()} 报价` : null,
       stock ? availability(variant) : null,
     ].filter(Boolean).join(" · "))
-    if ((product.variants?.length ?? 0) > variants.length) lines.push("还有其他规格，请打开商品页查看。")
-    return [product.title, ...(lines.length ? lines : ["暂未查到实时规格信息。"])].join("\n")
+    if (lines.length > 6) {
+      const amounts = variants.map(v => v.calculated_price?.calculated_amount)
+      const allPriced = price && variants.every(v => variantPrice(v, currency))
+      const range = allPriced ? [Math.min(...amounts as number[]), Math.max(...amounts as number[])] : []
+      const prices = allPriced
+        ? Array.from(new Set(range)).map(amount => convertToLocale({ amount, currency_code: currency })).join(" 至 ")
+        : price ? "部分版本的本地区价格尚未确认" : ""
+      const states = stock ? Array.from(new Set(variants.map(availability))).join("、") : ""
+      return [product.title, `匹配 ${lines.length} 个版本`, prices, states, "可指定颜色和配置查看单款。"].filter(Boolean).join(" · ")
+    }
+    return [product.title, ...(lines.length ? lines : ["未找到符合所选条件的销售版本。"])].join("\n")
   }).join("\n\n")
 }
 
@@ -105,27 +136,37 @@ export async function POST(request: Request) {
   }
 
   try {
-    const region = typeof body.countryCode === "string" && /^[a-z]{2}$/.test(body.countryCode) ? body.countryCode : ""
+    const region = body.countryCode || DEFAULT_COUNTRY_CODE
+    if (typeof region !== "string" || !/^[a-z]{2}$/.test(region)) return Response.json({ code: "INVALID_REGION" }, { status: 400 })
+    const storeRegion = await getRegion(region)
+    if (!storeRegion) return Response.json({ code: "INVALID_REGION" }, { status: 400 })
+    const currency = storeRegion.currency_code.toLowerCase()
     const pageHandle = typeof body.productHandle === "string" && /^[a-z0-9_-]{1,120}$/i.test(body.productHandle)
       ? body.productHandle : undefined
     const history = parseHistory(body.history)
-    const intent = resolveChatIntent(query, pageHandle, history.filter(({ role }) => role === "user").reverse().map(({ content }) => content))
+    const catalog = region ? await loadCatalogNames(region) : []
+    const intent = resolveChatIntent(query, pageHandle, history.filter(({ role }) => role === "user").reverse().map(({ content }) => content), catalog)
     const { handles, price, stock, policy, detail, recommendation, graphNode } = intent
-    const products = region ? await loadProduct(region, handles).catch(() => []) : []
-    const live = price || stock ? liveReply(products, price, stock) : ""
+    if (intent.clarification) return Response.json({ reply: intent.clarification })
+    const products = region ? await loadProduct(region, handles) : []
+    if (products.length) after(() => backfillCatalogEmbeddings(products.map(({ id }) => id), region).catch(() => {}))
+    const live = price || stock ? liveReply(products, query, currency, price, stock, products.length === 1 && products[0].handle === pageHandle ? body.selectedVariantId : undefined) : ""
     const graphAnchor = graphNode && (graphNode.startsWith("scene:") || products.some(({ handle }) => handle === graphNode))
     const purchased = new Set(Array.isArray(body.purchasedHandles) ? body.purchasedHandles.slice(0, 30) : [])
     const relations = recommendation && region && graphAnchor
       ? (await findRelations(graphNode).catch(() => [])).filter(({ target_handle }) => !purchased.has(target_handle)) : []
     const targets = relations.length
       ? await loadProduct(region, relations.map(({ target_handle }) => target_handle)).catch(() => []) : []
+    const budgetMatch = query.match(/(?:预算(?:是|为|在)?\s*|不超过\s*)(\d+(?:\.\d+)?)/) ?? query.match(/(\d+(?:\.\d+)?)\s*元(?:以内|以下)/)
+    const budget = budgetMatch ? Number(budgetMatch[1]) : undefined
     const cards = relations.flatMap(({ target_handle, reason }) => {
       const product = targets.find(({ handle }) => handle === target_handle)
       const buyable = product?.variants?.filter((variant) => ["有货", "可下单"].includes(availability(variant)))
       if (!product || !buyable?.length) return []
-      const priced = buyable.filter((variant) => variantPrice(variant))
+      const priced = buyable.filter((variant) => variantPrice(variant, currency))
         .sort((a, b) => a.calculated_price!.calculated_amount! - b.calculated_price!.calculated_amount!)
-      const amount = priced.length ? variantPrice(priced[0]) : null
+      if (budget !== undefined && (!priced.length || priced[0].calculated_price!.calculated_amount! > budget)) return []
+      const amount = priced.length ? variantPrice(priced[0], currency) : null
       return [{
         title: product.title,
         href: `/${region}/products/${product.handle}`,
@@ -137,12 +178,20 @@ export async function POST(request: Request) {
       ? `${products[0] ? `和${products[0].title}搭配，可以看看：` : "这个场景可以看看："}\n${cards.map(({ title, reason }) => `• ${title}：${reason}`).join("\n")}`
       : ""
     const directReply = [live, graph].filter(Boolean).join("\n\n")
-    const sendReply = (reply: string) => Response.json({
+    const sendReply = (reply: string, partial = false) => Response.json({
+      ...(partial ? { partial: true } : {}),
       reply: [reply, directReply].filter(Boolean).join("\n\n").slice(0, 4000),
       ...(cards.length ? { products: cards } : {}),
     })
-    if (directReply && !detail && !policy) return sendReply("")
-    if (detail && !policy && !products.length && !directReply) {
+    const liveLabels = products.flatMap(p => [
+      p.title, p.handle, p.title.replace(/^HUAWEI\s+/i, ""),
+      ...(p.options ?? []).flatMap(o => (o.values ?? []).map(v => v.value)),
+    ])
+    if (live && !policy && !recommendation && isLiveOnly(query, liveLabels)) return sendReply("")
+    const orderQuestion = /我的订单|我的包裹|我的快递|订单号/.test(query)
+    const notices: string[] = []
+    if (orderQuestion) notices.push("当前对话无法核实个人订单状态，请在「我的账户 → 我的订单」查看。")
+    if (detail && !recommendation && !policy && !products.length && !directReply) {
       return sendReply("请告诉我商品名称和要确认的规格，或从该商品详情页发起咨询。")
     }
 
@@ -150,30 +199,44 @@ export async function POST(request: Request) {
       searchKnowledge({ query, region, signal: request.signal, ...scope }).catch(() => [])
     const searches = products.map(({ id, title }) => lookup({ productId: id, title }))
     if (policy && region) searches.push(lookup({ policy: true }))
-    if (recommendation && !graphNode && !products.length && region && !policy) searches.push(lookup({}))
+    const catalogSearch = recommendation && !graphNode && !products.length && region && !policy
+    if (catalogSearch) searches.push(lookup({}))
     const candidates = (await Promise.all(searches)).flat()
     const discovered = candidates.flatMap(({ product_handle }) => product_handle && !handles.includes(product_handle) ? [product_handle] : [])
     const visible = discovered.length
       ? await loadProduct(region, Array.from(new Set(discovered))).catch(() => []) : []
+    if (visible.length) after(() => backfillCatalogEmbeddings(visible.map(({ id }) => id), region).catch(() => {}))
     const allowed = new Map([...products, ...visible].map(({ handle, id }) => [handle, id]))
-    const evidence = candidates.filter(({ product_id, product_handle }) =>
+    const verified = candidates.filter(({ product_id, product_handle }) =>
       product_handle ? allowed.get(product_handle) === product_id : policy && product_id === null
-    ).map(({ document_path, section, content }) => ({
-      document: document_path, section, content: content.slice(0, 1800),
+    )
+    const ranked = catalogSearch
+      ? await rerankKnowledge(query, verified, 6, request.signal).catch(() => verified.slice(0, 6))
+      : verified
+    const evidence = ranked.map(({ document_path, section, content }) => ({
+      document: document_path, section, content: content,
     }))
     if (policy && !evidence.some(({ document }) => document.startsWith("policies/"))) {
-      return sendReply("暂未查到适用于当前地区的配送或退换货政策，请查看商城的配送与退货说明。")
+      notices.push("当前未取得该地区的配送或退换政策，请以商城政策页为准。")
     }
-    if (recommendation && !products.length && !evidence.length) {
-      return sendReply("请告诉我你已买的商品，或说说使用场景和预算，我可以据此帮你选。")
+    if (recommendation && !products.length && !evidence.length && !directReply && !policy) {
+      return sendReply("当前没有检索到可核实的推荐商品。")
     }
     if (recommendation && graphNode && !graph && !detail && !policy) {
-      return sendReply("暂未查到这个商品或场景有已确认可下单的搭配。")
+      notices.push("暂未查到这个商品或场景有已确认可下单的搭配。")
     }
 
+    const partialReply = (reason: string) => sendReply([
+      ...notices, reason, ...products.map(p => {
+        const relevant = productFacts(p).specs.filter(([label]) => query.includes(label))
+        return relevant.length ? [p.title, ...relevant.map(([k,v]) => k + "：" + v)].join("\n") : ""
+      }),
+    ].filter(Boolean).join("\n"), true)
     const provider = getProvider()
-    if (!provider) return directReply ? sendReply("") : Response.json({ code: "AI_NOT_CONFIGURED" }, { status: 503 })
-    const context = JSON.stringify({ products: products.map(productFacts), evidence })
+    if (!provider) return partialReply("智能解答服务尚未配置，仅展示已核实的信息。")
+    const context = JSON.stringify({ products: [...products, ...visible].map(productFacts), evidence, realtime: directReply, recommendations: cards, resolvedProductNames: products.map(p => p.title), limitations: notices })
+    const configuredTimeout = Number(process.env.AI_CHAT_TIMEOUT_MS || 60000)
+    const timeout = AbortSignal.timeout(Number.isFinite(configuredTimeout) ? Math.min(120000, Math.max(1000, Math.round(configuredTimeout))) : 60000)
     const response = await fetch(provider.endpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${provider.key}`, "Content-Type": "application/json" },
@@ -181,26 +244,26 @@ export async function POST(request: Request) {
         model: provider.model,
         messages: [
           { role: "system", content: `${SYSTEM_PROMPT}\n\n本轮核实资料（JSON）\n${context}` },
-          ...history,
+          ...history.filter((turn, index) => turn.role === "assistant" || history[index + 1]?.role === "assistant"),
           { role: "user", content: query },
         ],
         stream: false,
       }),
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.any([request.signal, AbortSignal.timeout(25_000)]),
+      signal: AbortSignal.any([request.signal, timeout]),
     }).catch(() => null)
     if (!response?.ok) {
       console.warn("Chat provider unavailable", response?.status)
-      return directReply ? sendReply("") : Response.json({ code: "AI_UNAVAILABLE" }, { status: 502 })
+      return partialReply(timeout.aborted ? "智能分析超时，未完成的问题请重试。" : "智能分析暂时不可用，未完成的问题请重试。")
     }
 
     const data = await response.json().catch(() => null)
     const content = data?.choices?.[0]?.message?.content
     if (typeof content !== "string" || !content.trim()) {
-      return directReply ? sendReply("") : Response.json({ code: "AI_UNAVAILABLE" }, { status: 502 })
+      return partialReply("智能分析未返回有效内容，请重试。")
     }
-    return sendReply(content.trim())
+    return sendReply([...notices, content.trim() === "[ANSWERED]" ? (directReply || notices.length ? "" : "现有资料不足以确认这个问题。") : content.trim()].filter(Boolean).join("\n"))
   } catch {
     return Response.json({ code: "AI_UNAVAILABLE" }, { status: 502 })
   }

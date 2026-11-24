@@ -12,7 +12,7 @@ import type { SearchPreviewProduct } from "types/search-preview"
 
 const HISTORY_KEY = "laicai:recent-searches"
 const HOT_SEARCHES = ["卫衣", "充电宝", "保温杯", "拖把", "瑜伽垫", "慢食碗"]
-const candidateClass = "rounded-lg transition-colors hover:bg-amber-50 focus-visible:bg-amber-50 focus-visible:ring-inset focus-visible:ring-offset-0"
+const candidateClass = "rounded-lg transition-colors hover:bg-[#FFFBF5] focus-visible:bg-[#FFFBF5] focus-visible:ring-inset focus-visible:ring-offset-0"
 
 function readHistory(): string[] {
   try {
@@ -32,7 +32,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, index)}
-      <strong className="font-bold text-[#C7511F]">{text.slice(index, index + query.length)}</strong>
+      <strong className="font-bold text-[#965900]">{text.slice(index, index + query.length)}</strong>
       {text.slice(index + query.length)}
     </>
   )
@@ -165,7 +165,7 @@ const StoreSearchForm = ({ initialQuery = "", category }: { initialQuery?: strin
           event.preventDefault()
           if (!compositionRange.current) search(query.trim())
         }}
-        className="flex h-11 w-full gap-1 rounded-xl bg-white p-1 shadow-sm ring-1 ring-white/20 transition-shadow focus-within:ring-2 focus-within:ring-white/60"
+        className="flex h-11 w-full gap-1 rounded-2xl bg-white/95 p-1.5 shadow-sm ring-1 ring-white/30 backdrop-blur-md transition-shadow focus-within:ring-2 focus-within:ring-brand-orange"
         {...{
           toolname: "search_products",
           tooldescription: "Search the store's products by keyword",
@@ -212,7 +212,7 @@ const StoreSearchForm = ({ initialQuery = "", category }: { initialQuery?: strin
         <button
           type="submit"
           aria-label="搜索商品"
-          className="flex w-11 shrink-0 items-center justify-center rounded-lg bg-brand-orange text-brand-navy transition-colors hover:bg-brand-orange-hover focus-visible:ring-inset focus-visible:ring-offset-0"
+          className="flex w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-orange to-brand-action text-brand-navy hover:to-brand-action-hover focus-visible:ring-inset focus-visible:ring-offset-0"
           data-testid="nav-search-button"
         >
           <MagnifyingGlass className="h-5 w-5" />
@@ -222,7 +222,7 @@ const StoreSearchForm = ({ initialQuery = "", category }: { initialQuery?: strin
       {isOpen && (
         <div id={panelId} role="region" aria-label="搜索联想" aria-busy={isUpdating} onMouseDown={(event) => {
           if (isComposing && event.target instanceof Element && event.target.closest("a, button")) event.preventDefault()
-        }} className="absolute inset-x-0 top-full mt-2 max-h-[min(65dvh,36rem)] overflow-y-auto overscroll-contain rounded-xl border border-gray-200 bg-white text-sm text-brand-ink shadow-2xl">
+        }} className="absolute inset-x-0 top-full mt-2 max-h-[min(65dvh,36rem)] overflow-y-auto overscroll-contain glass-card rounded-2xl border-gray-100 bg-white/[0.97] text-sm text-brand-ink shadow-2xl">
           {!keyword ? (
             <div className="space-y-4 p-4">
               {history.length > 0 && (
@@ -237,7 +237,7 @@ const StoreSearchForm = ({ initialQuery = "", category }: { initialQuery?: strin
                     {history.map((term) => (
                       <div key={term} className="inline-flex max-w-full items-center rounded-full bg-gray-100">
                         <button type="button" data-search-candidate onClick={() => search(term)} className="min-w-0 truncate rounded-full py-1.5 pl-3 pr-1.5 hover:text-[#C7511F] focus-visible:ring-inset">{term}</button>
-                        <button type="button" aria-label={`删除搜索记录 ${term}`} onClick={() => updateHistory(history.filter((item) => item !== term))} className="rounded-full p-1.5 text-gray-500 hover:bg-gray-200">
+                        <button type="button" aria-label={`删除搜索记录 ${term}`} onClick={() => updateHistory(history.filter((item) => item !== term))} className="rounded-full p-1.5 text-gray-500 hover:bg-gray-200 hover:text-[#C7511F]">
                           <XMark className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
                       </div>
@@ -249,7 +249,7 @@ const StoreSearchForm = ({ initialQuery = "", category }: { initialQuery?: strin
                 <h2 className="mb-2 font-semibold">热门搜索推荐</h2>
                 <div className="flex flex-wrap gap-2">
                   {HOT_SEARCHES.map((term) => (
-                    <button key={term} type="button" data-search-candidate onClick={() => search(term)} className="rounded-full bg-amber-50 px-3 py-1.5 text-[#8A4B08] hover:bg-amber-100 focus-visible:ring-inset">{term}</button>
+                    <button key={term} type="button" data-search-candidate onClick={() => search(term)} className="rounded-full border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1.5 text-[#895015] hover:from-amber-100 hover:to-orange-100 focus-visible:ring-inset">{term}</button>
                   ))}
                 </div>
               </section>
@@ -272,14 +272,14 @@ const StoreSearchForm = ({ initialQuery = "", category }: { initialQuery?: strin
                   scope: "catalog",
                   query: `我在商城搜索「${keyword}」时没有找到商品。能帮我推荐合适的商品吗？`,
                 })
-              }} className={`inline-flex items-center gap-2 px-2 py-1.5 font-semibold text-[#8A4B08] ${candidateClass}`}>
+              }} className={`inline-flex items-center gap-2 border-l-2 border-brand-orange bg-gradient-to-r from-[#FFFBF5] to-transparent px-3 py-2 font-semibold text-[#8A4B08] ${candidateClass}`}>
                 <Sparkles aria-hidden="true" className="h-4 w-4" />问问来财 AI 导购 <span aria-hidden="true">→</span>
               </button>
             </div>
           ) : (
             <>
               {isUpdating && (
-                <div role="status" className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-amber-300 motion-safe:animate-pulse">
+                <div role="status" className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-gradient-to-r from-brand-orange to-brand-action motion-safe:animate-pulse">
                   <span className="sr-only">正在更新商品联想…</span>
                 </div>
               )}
@@ -288,7 +288,7 @@ const StoreSearchForm = ({ initialQuery = "", category }: { initialQuery?: strin
                   <h2 className="mb-2 text-xs font-semibold text-gray-500">相关细分品类</h2>
                   <div className="flex flex-wrap gap-2">
                     {relatedSearches.map(({ keyword: term, label }) => (
-                      <button key={term} type="button" data-search-candidate onClick={() => search(term)} className="rounded-full bg-amber-50 px-3 py-1.5 text-[#8A4B08] hover:bg-amber-100 focus-visible:ring-inset">
+                      <button key={term} type="button" data-search-candidate onClick={() => search(term)} className="rounded-full border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-1.5 text-[#895015] hover:from-amber-100 hover:to-orange-100 focus-visible:ring-inset">
                         {label}
                       </button>
                     ))}

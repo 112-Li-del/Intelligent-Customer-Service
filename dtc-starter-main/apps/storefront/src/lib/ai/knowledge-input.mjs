@@ -33,7 +33,32 @@ export function getEmbeddingProvider() {
   const key = process.env.AI_EMBEDDING_API_KEY?.trim()
   if (!base || !model || !key) return null
   const url = providerUrl(base)
-  url.pathname = url.pathname.replace(/\/+$/, "")
-  if (!url.pathname.endsWith("/embeddings")) url.pathname += "/embeddings"
+  const path = url.pathname.replace(/\/+$/, "")
+  url.pathname = path.endsWith("/embeddings") ? path : `${path}/embeddings`
   return { url, model, key }
+}
+
+export async function requestEmbeddings({ url, key, model }, input, signal) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, input, encoding_format: "float" }),
+    redirect: "error",
+    cache: "no-store",
+    signal,
+  })
+  if (!response.ok) throw new Error(`Embedding provider returned HTTP ${response.status}`)
+  const { data } = await response.json()
+  const count = typeof input === "string" ? 1 : input.length
+  if (!Array.isArray(data) || data.length !== count) throw new Error("Embedding response count mismatch")
+  const byIndex = new Map(data.map(({ index, embedding }) => [index, embedding]))
+  return Array.from({ length: count }, (_, index) => {
+    const vector = byIndex.get(index)
+    if (!Array.isArray(vector) || !vector.length || vector.length > 8192 ||
+        vector.some((value) => typeof value !== "number" || !Number.isFinite(Math.fround(value))) ||
+        !vector.some((value) => Math.fround(value) !== 0)) {
+      throw new Error("Invalid embedding vector")
+    }
+    return vector
+  })
 }

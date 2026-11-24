@@ -36,13 +36,13 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
               {product.collection.title}
             </LocalizedClientLink>
           )}
-          <span className="rounded-full bg-[#FFF3E0] px-2.5 py-1 text-xs font-semibold text-[#8A4B08]">
-            来财精选
+          <span className="rounded-full border border-[#FDDFA0] bg-gradient-to-r from-[#FFF3E0] to-[#FDE8C0] px-2.5 py-1 text-xs font-semibold text-[#8A5010]">
+            <span aria-hidden="true">✦ </span>来财精选
           </span>
         </div>
 
         <h1
-          className="text-2xl font-semibold leading-9 text-brand-ink small:text-3xl small:leading-[42px]"
+          className="font-serif text-2xl font-bold leading-9 tracking-[-0.02em] text-brand-ink small:text-3xl small:leading-[42px]"
           data-testid="product-title"
         >
           {product.title}
@@ -56,17 +56,17 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
           <ProductReviewSummary {...reviewSummary} />
         )}
 
-        <div className="grid gap-3 rounded-lg bg-gray-50 p-4 text-sm text-gray-600 xsmall:grid-cols-3">
+        <div className="grid gap-3 rounded-xl border border-[#EDE8DF] bg-gradient-to-r from-[#F7F5F0] to-[#FAFAF8] p-4 text-sm text-gray-600 xsmall:grid-cols-3">
           <div className="flex items-center gap-2">
-            <TruckFast className="h-5 w-5 shrink-0 text-brand-navy-light" />
+            <TruckFast className="h-5 w-5 shrink-0 text-brand-amber" />
             <span>配送时效以结算页为准</span>
           </div>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 shrink-0 text-brand-navy-light" />
+            <ShieldCheck className="h-5 w-5 shrink-0 text-brand-amber" />
             <span>交易与售后保障</span>
           </div>
           <div className="flex items-center gap-2">
-            <ArrowPath className="h-5 w-5 shrink-0 text-brand-navy-light" />
+            <ArrowPath className="h-5 w-5 shrink-0 text-brand-amber" />
             <span>退换以商城政策为准</span>
           </div>
         </div>
@@ -74,7 +74,7 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
         <div>
           <h2 className="text-sm font-semibold text-brand-ink">商品介绍</h2>
           <p
-            className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-600"
+            className="mt-3 whitespace-pre-line text-sm leading-8 text-[#4A4A4A]"
             data-testid="product-description"
           >
             {product.description ||
@@ -83,10 +83,10 @@ const ProductInfo = ({ product }: ProductInfoProps) => {
         </div>
         <section aria-labelledby="core-specs-title">
           <h2 id="core-specs-title" className="text-sm font-semibold text-brand-ink">核心规格速览</h2>
-          <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-100 bg-gray-100">
+          <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[#EDE8DF] bg-[#EDE8DF]">
             {specs.map(([label, value]) => (
-              <div key={label} className="min-w-0 bg-[#F7F8F8] px-3 py-2.5">
-                <dt className="text-xs text-gray-500">{label}</dt>
+              <div key={label} className="min-w-0 bg-gradient-to-b from-white to-[#FAFAF8] px-3 py-2.5">
+                <dt className="text-xs font-medium text-brand-navy/65">{label}</dt>
                 <dd className="mt-1 break-words text-sm font-medium text-brand-ink">{value || "商家待补充"}</dd>
               </div>
             ))}
