@@ -12,6 +12,7 @@ import { useParams, usePathname } from "next/navigation"
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -25,6 +26,14 @@ import MessageList from "./message-list"
 import { copy } from "./chat-copy"
 import { feedbackStore } from "./feedback"
 import { suggestionsFor } from "./suggestions"
+import {
+  clearHistory,
+  conversationScope,
+  extendHistory,
+  restoreConversation,
+  saveTurn,
+  type ModelHistory,
+} from "../../conversation-history"
 
 const initialMessages: AiMessage[] = [
   { id: 0, role: "assistant", content: copy.welcome },
@@ -33,9 +42,11 @@ const initialMessages: AiMessage[] = [
 const AiChatConversation = ({
   pathname,
   hideLauncher,
+  scope,
 }: {
   pathname: string
   hideLauncher: boolean
+  scope: string
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<AiMessage[]>(initialMessages)
@@ -59,20 +70,43 @@ const AiChatConversation = ({
   const open = useRef(false)
   const opener = useRef<HTMLElement | null>(null)
   const session = useRef<AbortController | null>(null)
-  const storageKey =
-    "laicai.chat.feedback." +
-    (/\/(?:products|order)\//.test(pathname) ? pathname : "storefront")
+  const storageKey = "laicai.chat.feedback." + scope
   const nextMessageId = useRef(0)
   const lastEntry = useRef<{ key: string; isOpen: boolean } | null>(null)
   const requestQueue = useRef(Promise.resolve())
-  const modelHistory = useRef<{
-    handle?: string | null
-    turns: Pick<AiMessage, "role" | "content">[]
-  }>({ turns: [] })
+  const modelHistory = useRef<ModelHistory>({ turns: [] })
   const pendingRequests = useRef(0)
   const messageListRef = useRef<HTMLDivElement>(null)
   const isProductPage = pathname.includes("/products/")
   const { countryCode } = useParams<{ countryCode: string }>()
+
+  const restored = useRef(false)
+  const restoreOnce = useCallback(() => {
+    if (restored.current) return
+    restored.current = true
+    const saved = restoreConversation(scope)
+    modelHistory.current = saved.history
+    if (saved.messages.length) {
+      setMessages([...initialMessages, ...saved.messages])
+      nextMessageId.current = saved.messages.reduce(
+        (max, message) => Math.max(max, message.id + 1),
+        1
+      )
+    }
+  }, [scope])
+
+  const previousPath = useRef(pathname)
+  useLayoutEffect(() => {
+    if (previousPath.current === pathname) return
+    previousPath.current = pathname
+    // Show the destination page; keep the transcript and any in-flight reply.
+    open.current = false
+    lastEntry.current = null
+    setIsOpen(false)
+    setAttached(undefined)
+    setOpenedProduct(undefined)
+    setIsCatalogInquiry(false)
+  }, [pathname])
 
   const sendQuery = useCallback(
     (rawQuery: string, product?: AiChatProduct) => {
@@ -81,7 +115,10 @@ const AiChatConversation = ({
 
       const controller =
         session.current ?? (session.current = new AbortController())
-      nextMessageId.current = Math.max(nextMessageId.current, Date.now())
+      nextMessageId.current = Math.max(
+        nextMessageId.current,
+        Date.now() * 1024 + Math.floor(Math.random() * 1024)
+      )
       pendingRequests.current++
       setInput("")
       setIsLoading(true)
@@ -94,10 +131,14 @@ const AiChatConversation = ({
           content: query,
         }
         setMessages((current) => [...current, userMessage])
+        const turnKey =
+          userMessage.id + "-" + Math.random().toString(36).slice(2)
+        const handle = product?.handle ?? undefined
+        saveTurn(scope, turnKey, userMessage, handle)
 
         try {
           const history =
-            modelHistory.current.handle === product?.handle
+            modelHistory.current.handle === handle
               ? modelHistory.current.turns
               : []
           const reply = await requestAssistantReply(
@@ -116,17 +157,15 @@ const AiChatConversation = ({
           }
           setIsLive(reply.status === "live")
           if (reply.status === "live") {
-            modelHistory.current = {
-              handle: product?.handle,
-              turns: [...history, userMessage, assistantMessage]
-                .slice(-6)
-                .map(({ role, content }) => ({
-                  role,
-                  content: content.slice(0, 1000),
-                })),
-            }
+            modelHistory.current = extendHistory(
+              history,
+              userMessage,
+              assistantMessage,
+              handle
+            )
           }
           setMessages((current) => [...current, assistantMessage])
+          saveTurn(scope, turnKey, userMessage, handle, assistantMessage)
         } catch {
           if (controller.signal.aborted) return
           if (!open.current) setUnread(true)
@@ -138,13 +177,14 @@ const AiChatConversation = ({
             content: copy.error,
           }
           setMessages((current) => [...current, message])
+          saveTurn(scope, turnKey, userMessage, handle, message)
         } finally {
           if (!controller.signal.aborted && --pendingRequests.current === 0)
             setIsLoading(false)
         }
       })
     },
-    [countryCode]
+    [countryCode, scope]
   )
 
   const closeChat = useCallback(() => {
@@ -158,6 +198,7 @@ const AiChatConversation = ({
 
   useEffect(() => {
     const handleChatTrigger = (event: Event) => {
+      restoreOnce()
       const detail = (event as CustomEvent<AiChatOpenDetail>).detail || {}
       const query = detail.query?.trim()
       const inquiryProduct =
@@ -199,7 +240,7 @@ const AiChatConversation = ({
 
     window.addEventListener(AI_CHAT_EVENT, handleChatTrigger)
     return () => window.removeEventListener(AI_CHAT_EVENT, handleChatTrigger)
-  }, [closeChat, productContext, sendQuery])
+  }, [closeChat, productContext, restoreOnce, sendQuery])
 
   useEffect(() => {
     messageListRef.current?.scrollTo({
@@ -236,6 +277,7 @@ const AiChatConversation = ({
     modelHistory.current = { turns: [] }
     lastEntry.current = { key: "", isOpen: true }
     feedbackStore.clear(storageKey)
+    clearHistory(scope)
     setResetVersion((version) => version + 1)
     setMessages(initialMessages)
     setInput("")
@@ -310,15 +352,21 @@ const AiChatConversation = ({
   )
 }
 
-export default function AiChatWidget({ isLoggedIn }: { isLoggedIn: boolean }) {
+export default function AiChatWidget({
+  isLoggedIn,
+  customerId,
+}: {
+  isLoggedIn: boolean
+  customerId?: string
+}) {
   const pathname = usePathname()
-  const conversationKey = /\/(?:products|order)\//.test(pathname)
-    ? pathname
-    : "storefront"
+  const { countryCode } = useParams<{ countryCode: string }>()
+  const conversationKey = conversationScope(countryCode, customerId)
   const isLoginPage = /\/account\/?$/.test(pathname)
   return (
     <AiChatConversation
       key={conversationKey}
+      scope={conversationKey}
       pathname={pathname}
       hideLauncher={isLoginPage && !isLoggedIn}
     />

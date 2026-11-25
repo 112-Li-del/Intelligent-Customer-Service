@@ -41,7 +41,7 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
       )}
       {props.children}
       <Footer />
-      <AiChatWidget isLoggedIn={Boolean(customer)} />
+      <AiChatWidget isLoggedIn={Boolean(customer)} customerId={customer?.id} />
     </>
   )
 }

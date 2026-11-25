@@ -153,6 +153,33 @@ test("compound question still reaches model; timeout explains partial response a
   assert.equal(partial,true); assert.match(reply,/超时/); assert.match(reply,/5999/); assert.match(reply,/6800mAh/)
 })
 const loadComponent = createJiti(import.meta.url, { jsx: { runtime: "automatic" }, fsCache: false })
+test("restores structured chat turns and follow-up context without mixing shoppers or reviving cleared replies", t => {
+  const { conversationScope, saveTurn, restoreConversation, clearHistory } = loadComponent("../src/modules/ai-chat/conversation-history.ts")
+  const storage = Object.create(null)
+  Object.defineProperties(storage, {
+    getItem: { value: key => storage[key] ?? null },
+    setItem: { value: (key, value) => { storage[key] = value } },
+    removeItem: { value: key => { delete storage[key] } },
+  })
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage })
+  t.after(() => { if (descriptor) Object.defineProperty(globalThis, "localStorage", descriptor); else delete globalThis.localStorage })
+  const scope = conversationScope("cn", "customer-a")
+  const other = conversationScope("cn", "customer-b")
+  const user = { id: 1, role: "user", content: "尺码怎么选？" }
+  const product = { title: "卫衣", href: "/cn/products/hoodie", price: "¥129", reason: "日常穿搭" }
+  const assistant = { id: 2, role: "assistant", ...adaptChatResponse({reply: "请参考尺码表", products:[product], suggestions:["了解 M 码"], sources:[{title:"尺码表", type:"product"}]}, true, () => "") }
+  saveTurn(scope, "t", user, "hoodie")
+  saveTurn(scope, "t", user, "hoodie", assistant)
+  assert.deepEqual(restoreConversation(scope).messages, [user, assistant])
+  assert.deepEqual(restoreConversation(scope).history.turns.map(turn => turn.content), [user.content, assistant.content])
+  assert.equal(restoreConversation(other).messages.length, 0)
+  saveTurn(other, "t", user)
+  clearHistory(scope)
+  saveTurn(scope, "t", user, "hoodie", assistant)
+  assert.equal(restoreConversation(scope).messages.length, 0)
+  assert.deepEqual(restoreConversation(other).messages, [user])
+})
 const AssistantReply = loadComponent("../src/modules/ai-chat/components/ai-chat-widget/assistant-reply.tsx").default
 const widgetDir = "../src/modules/ai-chat/components/ai-chat-widget/"
 

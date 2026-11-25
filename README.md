@@ -129,6 +129,55 @@ pnpm.cmd --dir apps/backend exec medusa db:migrate
 pnpm.cmd --dir apps/backend exec medusa exec ./src/scripts/seed-catalog-preview.ts
 ```
 
-刷新商品列表后可打开任意商品详情。在详情页打开知选 AI 助手，可以查询该商品的参数和使用说明。当前演示按关键词匹配商品资料。评价是为演示编写的样例。
+### 4. 配置与启用 AI 智能客服（RAG 知识库问答）
 
-提交到 GitHub 时，环境变量字段通过 `.env.template` 同步，本机密码和连接配置填在 Git 忽略的 `.env` 或 `.env.local` 中。
+智能客服包含**大模型对话**、**Medusa 实时库存/价格校验**与**PostgreSQL 知识库检索（RAG）**。
+
+#### (1) 配置前端环境变量
+在 `apps/storefront/.env.local` 中配置兼容 OpenAI 格式的大语言模型和向量模型参数（推荐使用阿里云 DashScope、DeepSeek 或 OpenAI）：
+
+```dotenv
+# 大模型聊天服务（必须配置，否则降级为本地演示 Mock 模式）
+AI_CHAT_BASE_URL=https://api.openai.com/v1
+AI_CHAT_API_KEY=sk-xxxxxx
+AI_CHAT_MODEL=gpt-4o-mini
+
+# 向量嵌入模型（用于切片检索；若暂无 Embedding Key 可使用下方纯文本模式）
+AI_EMBEDDING_BASE_URL=https://api.openai.com/v1
+AI_EMBEDDING_API_KEY=sk-xxxxxx
+AI_EMBEDDING_MODEL=text-embedding-3-small
+
+# 知识库数据库连接（本地开发自动继承 backend 的 DATABASE_URL，无需修改）
+AI_KNOWLEDGE_USE_LOCAL_MEDUSA=true
+```
+
+#### (2) 导入商品知识库与搭配图谱
+首次启动或更新知识库后，从 `dtc-starter-main/apps/storefront` 运行导入脚本，将 12 款商品的官方核实规格、成衣尺码对照、配送退货政策及搭配关系切片入库：
+
+```powershell
+# 完整向量切片导入（需要配置 AI_EMBEDDING_*）
+cd dtc-starter-main/apps/storefront
+node --env-file=../backend/.env --env-file=.env.local ./scripts/import-knowledge.mjs
+
+# 或：纯文本模式导入（若未配置 Embedding，仅建立关键词全文索引）
+node --env-file=../backend/.env --env-file=.env.local ./scripts/import-knowledge.mjs --text-only
+```
+
+#### (3) 验证问答服务
+启动前台后，点击右下角 **✨ 来财 AI 客服**，尝试发送以下测试问题检验不同维度的问答链路：
+* **实时规格与多接口区分**：“充电宝的 USB-C 和 USB-A 分别支持多少瓦快充？”（核对准确输出功率）
+* **尺码表精确核对**：“卫衣 L 码的胸围是多少？XL 呢？”（测试多轮指代理解与尺码提取）
+* **场景与商品搭配推荐**：“买了电脑支架，出差还可以搭配什么？”（验证动态推荐卡片展示）
+* **实时价格与库存查询**：“连帽卫衣现在多少钱，有现货吗？”（测试 Medusa 实时库存价格联动）
+
+---
+
+## 常见问题与自动降级说明
+
+1. **未配置 AI Key 会怎样？**
+   * 系统会自动进入**本地演示模式**，对常见问题（如退换货、尺码选择）返回预置的基础回复，前台会标注 `[演示回复]`。
+2. **未运行知识库导入脚本会怎样？**
+   * 大模型仍能通用对话，但在涉及具体商品规格、确切尺寸、退换货政策细节时，无法调取经过审核的事实依据。建议拉取代码后务必执行一次 `import-knowledge.mjs`。
+3. **提交代码注意事项**：
+   * 环境变量字段请通过 `.env.template` 维护，真实的密钥和数据库密码存放在本地 `.env` 与 `.env.local` 中，已被 `.gitignore` 保护，切勿提交到公共仓库。
+
